@@ -1,0 +1,45 @@
+/* ============================================================
+   CODENAME COACH (RECON) — デザイントークン v3「Clean / readable」
+   白基調・高コントラスト・装飾控えめのシンプル路線。
+   タイプ色(--accent)は accent.ts が流し込み、要所のみで使う。
+   ============================================================ */
+:root {
+  /* ---- ベース(ライト) ---- */
+  --night-court: #F4F6FA;  /* ページ背景(淡いクールグレー) */
+  --deep-court: #FFFFFF;   /* カード面・エンブレム内部 */
+  --court-line: #1B2535;   /* 主要テキスト(濃いスレート) */
+  --line-dim: #677488;     /* 補助テキスト(白背景で可読) */
+
+  /* ---- バリアント(チップ背景・濃文字で読む) ---- */
+  --alpha-silver: #D6DDE7;
+  --omega-gold: #E2B64E;
+
+  /* ---- アクセント(JSがタイプ色を上書き。既定は無彩スレート) ---- */
+  --accent: #5A6B82;
+  --accent-soft: rgba(90, 107, 130, 0.26);
+  --accent-faint: rgba(90, 107, 130, 0.09);
+  --accent-contrast: #FFFFFF; /* アクセント(濃いめ)上の白文字 */
+
+  /* ---- 罫線 ---- */
+  --divider: rgba(27, 37, 53, 0.10);
+  --divider-strong: rgba(27, 37, 53, 0.20);
+
+  /* ---- 形状 ---- */
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+
+  /* ---- 影(ごく控えめ) ---- */
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.08);
+  --shadow-pop: 0 4px 16px rgba(16, 24, 40, 0.12);
+
+  /* ---- タイポグラフィ ---- */
+  --font-display: 'Oswald', 'Noto Sans JP', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-body: 'Noto Sans JP', sans-serif;
+
+  /* ---- レイアウト ---- */
+  --pad: 16px;
+  --nav-h: 62px;
+  --maxw: 760px;
+}
