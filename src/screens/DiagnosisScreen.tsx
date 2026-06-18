@@ -144,8 +144,7 @@ export default function DiagnosisScreen() {
             あなたの仮コードネームを解析します。
           </p>
           <p className="small muted" style={{ marginTop: 8 }}>
-            仮タイプは出発点です。承認済みの試合が <span className="mono">{MEASURED_MIN_MATCHES}</span> 試合
-            たまると、実測タイプに進化します。
+            承認済み <span className="mono" style={{ color: 'var(--accent)' }}>{MEASURED_MIN_MATCHES}</span> 試合で実測タイプに進化します。
           </p>
           {retake && (
             <p className="small muted" style={{ marginTop: 8 }}>
@@ -202,8 +201,7 @@ export default function DiagnosisScreen() {
             </div>
             {!measured && (
               <p className="small muted">
-                承認済みの試合が <span className="mono">{MEASURED_MIN_MATCHES}</span> 試合たまると、
-                実測タイプに進化します。
+                承認済み <span className="mono" style={{ color: 'var(--accent)' }}>{MEASURED_MIN_MATCHES}</span> 試合で実測タイプに進化。
               </p>
             )}
             <button className="btn btn-primary" onClick={() => navigate('/')}>

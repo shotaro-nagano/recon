@@ -1,19 +1,18 @@
 /* ============================================================
    SettingsScreen — 設定
-   ペルソナ・スキン・シーズンオフ・粒度・β情報・データ管理
+   スキン・β情報・練習フォーカスの記録(裏DB)・データ管理
    (スナップショット復元 / デモ / 全削除は confirm 必須)
    ============================================================ */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { todayStr, useAppStore } from '@/store/useAppStore';
 import { isBeta } from '@/domain/typeEngine';
-import { PERSONA_INFO, SKIN_INFO } from '@/domain/constants';
-import type { Persona, Settings, Skin } from '@/domain/types';
-import { APP_NAME, APP_VERSION } from '@/brand';
-import { deviceAIAvailability, deviceAISupported, type DeviceAvailability } from '@/domain/coach/deviceAI';
-import { Card, Screen, SectionLabel, Segmented } from '@/components/ui';
+import { SKIN_INFO } from '@/domain/constants';
+import { FOCUS_LABEL } from '@/domain/coach/drills';
+import type { Skin } from '@/domain/types';
+import { APP_BUILD, APP_NAME, APP_VERSION } from '@/brand';
+import { Card, Collapsible, Screen, SectionLabel, Segmented } from '@/components/ui';
 
-const PERSONA_KEYS = Object.keys(PERSONA_INFO) as Persona[];
 const SKIN_KEYS = Object.keys(SKIN_INFO) as Skin[];
 const SNAPSHOT_SHOW = 10;
 
@@ -28,6 +27,7 @@ export default function SettingsScreen() {
   const navigate = useNavigate();
   const settings = useAppStore((s) => s.settings);
   const snapshots = useAppStore((s) => s.snapshots);
+  const practiceFocusLog = useAppStore((s) => s.practiceFocusLog);
   const setSettings = useAppStore((s) => s.setSettings);
   const rollbackTo = useAppStore((s) => s.rollbackTo);
   const loadDemo = useAppStore((s) => s.loadDemo);
@@ -36,22 +36,6 @@ export default function SettingsScreen() {
   const simple = settings.simpleMode;
   const today = todayStr();
 
-  // 端末内蔵AIの対応状況
-  const [deviceAvail, setDeviceAvail] = useState<DeviceAvailability | 'checking'>('checking');
-  useEffect(() => {
-    if (!deviceAISupported()) { setDeviceAvail('unavailable'); return; }
-    let on = true;
-    deviceAIAvailability().then((a) => { if (on) setDeviceAvail(a); }).catch(() => { if (on) setDeviceAvail('unknown'); });
-    return () => { on = false; };
-  }, []);
-  const deviceAvailText: Record<DeviceAvailability | 'checking', string> = {
-    checking: '確認中…',
-    available: '✓ この端末は内蔵AIに対応しています',
-    downloadable: '対応(初回はモデルのダウンロードが必要)',
-    downloading: 'モデルをダウンロード中…',
-    unavailable: 'この端末/ブラウザは内蔵AIに非対応(選んでも自動でかんたん応答になります)',
-    unknown: '対応状況を判定できませんでした',
-  };
   const beta = isBeta(settings, today);
 
   // β校正の残り日数(運用開始から1ヶ月)
@@ -90,8 +74,8 @@ export default function SettingsScreen() {
         <SectionLabel>表示モード</SectionLabel>
         <p className="small muted" style={{ marginBottom: 10 }}>
           {simple
-            ? 'かんたんモード: よく使う機能だけを表示しています。慣れてきたらフル機能に切り替えると、詳しい記録や編集機能がすべて使えます。'
-            : 'フル機能モード: すべての機能を表示しています。'}
+            ? 'かんたんモード: よく使う機能だけ表示中。フル機能で詳しい記録・編集が全て使えます。'
+            : 'フル機能モード: すべて表示中。'}
         </p>
         <Segmented<'simple' | 'full'>
           options={[
@@ -126,39 +110,13 @@ export default function SettingsScreen() {
         <p className="small muted" style={{ marginTop: 8 }}>コーチの呼びかけに使われます。</p>
       </Card>
 
-      {/* ペルソナ */}
-      <Card>
-        <SectionLabel>コーチのペルソナ</SectionLabel>
-        <p className="small muted" style={{ marginBottom: 8 }}>
-          変わるのは語り口だけ。助言の内容・数値・鉄則は全ペルソナ共通です。
-        </p>
-        <div className="stack">
-          {PERSONA_KEYS.map((p) => (
-            <button
-              key={p}
-              className="card"
-              onClick={() => setSettings({ persona: p })}
-              style={{
-                textAlign: 'left',
-                width: '100%',
-                color: 'var(--court-line)',
-                borderColor: settings.persona === p ? 'var(--accent)' : undefined,
-              }}
-              aria-pressed={settings.persona === p}
-            >
-              <div className="spread">
-                <strong>{PERSONA_INFO[p].label}</strong>
-                {settings.persona === p && (
-                  <span className="small" style={{ color: 'var(--accent)' }}>使用中</span>
-                )}
-              </div>
-              <p className="small muted" style={{ marginTop: 4 }}>{PERSONA_INFO[p].desc}</p>
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      {/* スキン */}
+      {/* コーチのスキン(見た目のみ) */}
+      <Collapsible
+        title="コーチのスキン"
+        openLabel="コーチの見た目を変える"
+        closeLabel="とじる"
+        summary={<span>スキン: {SKIN_INFO[settings.skin].label}</span>}
+      >
       <Card>
         <SectionLabel>コーチのスキン</SectionLabel>
         <p className="small muted" style={{ marginBottom: 8 }}>
@@ -189,57 +147,54 @@ export default function SettingsScreen() {
           ))}
         </div>
       </Card>
+      </Collapsible>
 
-      {/* チャットのAI */}
+      {/* 練習フォーカスの記録(裏DB・上級) */}
+      {!simple && (
+      <Collapsible
+        title="練習フォーカスの記録"
+        openLabel="練習フォーカスの記録を見る(裏DB)"
+        closeLabel="とじる"
+        summary={
+          <span>
+            記録 <span className="mono">{practiceFocusLog.length}</span>件
+            {practiceFocusLog[0] && <> ・ 直近: {FOCUS_LABEL[practiceFocusLog[0].focus]}</>}
+          </span>
+        }
+      >
       <Card>
-        <SectionLabel>チャットのAI</SectionLabel>
+        <SectionLabel>練習フォーカスの記録</SectionLabel>
         <p className="small muted" style={{ marginBottom: 8 }}>
-          かんたん応答=端末内の決まり文句で即答(無料・オフライン)。端末のAI=ブラウザ内蔵AIで自由に会話(対応端末のみ・実験的)。
-          どちらも<b>端末内で動作し、外部サーバーには送信しません</b>。
+          コーチの「練習メニュー」で<b>強み/弱点</b>を選んだ履歴です。本人の練習傾向を後から振り返れます。
         </p>
-        <Segmented<Settings['chatEngine']>
-          options={[
-            { value: 'rule', label: 'かんたん応答' },
-            { value: 'device', label: '端末のAI(実験的)' },
-          ]}
-          value={settings.chatEngine}
-          onChange={(v) => setSettings({ chatEngine: v })}
-        />
-        <p className="small muted" style={{ marginTop: 8 }}>{deviceAvailText[deviceAvail]}</p>
+        {practiceFocusLog.length === 0 ? (
+          <p className="small muted">まだ記録がありません。コーチ → 練習メニューで選ぶと残ります。</p>
+        ) : (
+          <div className="stack" style={{ gap: 4 }}>
+            {practiceFocusLog.slice(0, 20).map((e) => (
+              <div key={e.id} className="spread small">
+                <span className="mono muted">{e.date}</span>
+                <span style={{ color: e.focus === 'strong' ? 'var(--pos)' : 'var(--warn)', fontWeight: 700 }}>
+                  {e.focus === 'strong' ? '🔥' : '🛡️'} {FOCUS_LABEL[e.focus]}
+                </span>
+              </div>
+            ))}
+            {practiceFocusLog.length > 20 && (
+              <p className="small muted">他 <span className="mono">{practiceFocusLog.length - 20}</span> 件は省略</p>
+            )}
+          </div>
+        )}
       </Card>
+      </Collapsible>
+      )}
 
-      {/* シーズンオフ */}
-      <Card>
-        <SectionLabel>シーズンオフ</SectionLabel>
-        <p className="small muted" style={{ marginBottom: 8 }}>
-          試合がない期間は、週次レビューが練習ログ中心の表示になります。
-        </p>
-        <Segmented<'on' | 'off'>
-          options={[
-            { value: 'off', label: 'シーズン中' },
-            { value: 'on', label: 'シーズンオフ' },
-          ]}
-          value={settings.offseason ? 'on' : 'off'}
-          onChange={(v) => setSettings({ offseason: v === 'on' })}
-        />
-      </Card>
-
-      {/* 練習メニュー粒度 */}
-      <Card>
-        <SectionLabel>練習メニュー粒度の既定値</SectionLabel>
-        <p className="small muted" style={{ marginBottom: 8 }}>
-          週次でメニューを出すときの初期値です。毎回その場で変更できます。
-        </p>
-        <Segmented<Settings['menuGranularity']>
-          options={[
-            { value: 'がっちり', label: 'がっちり(本数・セット数まで)' },
-            { value: 'ふわっと', label: 'ふわっと(テーマと狙いのみ)' },
-          ]}
-          value={settings.menuGranularity}
-          onChange={(v) => setSettings({ menuGranularity: v })}
-        />
-      </Card>
-
+      {/* β校正・データ管理 */}
+      <Collapsible
+        title="β校正とデータ管理"
+        openLabel="β校正・スナップショット・データ管理を見る"
+        closeLabel="とじる"
+        summary={beta && betaRemainDays != null ? <span>β校正中(残り <span className="mono">{betaRemainDays}</span>日)</span> : undefined}
+      >
       {/* β情報 */}
       <Card>
         <SectionLabel>β校正期間</SectionLabel>
@@ -316,13 +271,21 @@ export default function SettingsScreen() {
           <hr className="divider" />
           <div className="spread" style={{ gap: 12 }}>
             <p className="small muted">端末内の全データを消去(二重確認あり・取り消し不可)</p>
-            <button className="btn" style={{ flexShrink: 0 }} onClick={handleResetAll}>
+            <button className="btn" style={{ flexShrink: 0, borderColor: 'var(--neg)', color: 'var(--neg)' }} onClick={handleResetAll}>
               すべてのデータを削除
             </button>
           </div>
         </div>
       </Card>
 
+      </Collapsible>
+
+      {/* プライバシー・アプリ情報 */}
+      <Collapsible
+        title="プライバシーとアプリ情報"
+        openLabel="プライバシー方針・アプリ情報を見る"
+        closeLabel="とじる"
+      >
       {/* プライバシー方針 */}
       <Card>
         <SectionLabel>プライバシー方針</SectionLabel>
@@ -339,11 +302,15 @@ export default function SettingsScreen() {
           <span className="muted">{APP_NAME} — 卓球選手専用AIコーチ</span>
           <span className="mono">{APP_VERSION}</span>
         </div>
+        <div className="spread small" style={{ marginTop: 2 }}>
+          <span className="muted">ビルド</span>
+          <span className="mono" style={{ color: 'var(--pos)' }}>{APP_BUILD}</span>
+        </div>
         <p className="small muted" style={{ marginTop: 6 }}>
-          PWA対応 — ブラウザのメニューから「ホーム画面に追加」すると、アプリとして全画面で使えます。
-          戦術カードはオフラインでも開けます。
+          PWA対応 — 「ホーム画面に追加」でアプリとして使えます。戦術カードはオフラインでも開けます。
         </p>
       </Card>
+      </Collapsible>
     </Screen>
   );
 }

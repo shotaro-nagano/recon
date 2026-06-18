@@ -4,12 +4,14 @@
    - 確定タグ候補: 10pt以上 かつ 3試合連続で観測
    - 解消候補: 確定タグが直近2試合で観測されない
    ============================================================ */
-import { CONFIRM_MIN_PT, CONFIRM_STREAK, COURSE_LABELS, MAIN_WINDOW_MATCHES, RESOLVE_ABSENT_MATCHES } from './constants';
+import { CONFIRM_MIN_PT, CONFIRM_STREAK, COURSE_LABELS, MAIN_WINDOW_MATCHES, RESOLVE_ABSENT_MATCHES, UNKNOWN_SERVE } from './constants';
 import type { AxisResult, Course, Match, SelfKarte, TendencyEntry } from './types';
 import { computeAxes } from './axisEngine';
 import { wilsonHalfWidth } from './stats';
 
-const sortDesc = (ms: Match[]) => [...ms].sort((a, b) => (a.date < b.date ? 1 : -1));
+// ラリー記録のある試合のみを分析対象にする(結果だけ手入力した試合は窓を消費しない)
+const sortDesc = (ms: Match[]) =>
+  ms.filter((m) => m.rallies.length > 0).sort((a, b) => (a.date < b.date ? 1 : -1));
 
 /* ---- サーブ別成績(直近5試合) ---- */
 export interface ServeStat {
@@ -25,7 +27,7 @@ export function serveStats(approved: Match[]): ServeStat[] {
   const groups = new Map<string, { wins: number; total: number; courses: Map<Course, number> }>();
   for (const m of recent) {
     for (const r of m.rallies) {
-      if (r.server !== 'me') continue;
+      if (r.server !== 'me' || r.serveType === UNKNOWN_SERVE) continue;
       const g = groups.get(r.serveType) ?? { wins: 0, total: 0, courses: new Map() };
       g.total += 1;
       if (r.winner === 'me') g.wins += 1;
@@ -100,7 +102,7 @@ export function detectReceiveWeaknesses(approved: Match[]): TendencyCandidate[] 
     const last3 = recent.slice(0, CONFIRM_STREAK);
     const perMatch = last3.map((m) => {
       const rows = m.rallies.filter((r) => r.server === 'opp' && r.serveCourse === stat.course);
-      if (rows.length === 0) return null;
+      if (rows.length < 3) return null; // 母数が極小の試合は「連続観測」に数えない
       return rows.filter((r) => r.winner === 'opp').length / rows.length;
     });
     const streak =
@@ -144,7 +146,9 @@ export interface AxisTrendPoint {
 
 /** 試合を1つずつ増やしながら軸スコアを再計算し推移を返す */
 export function axisTrend(approved: Match[]): AxisTrendPoint[] {
-  const asc = [...approved].sort((a, b) => (a.date > b.date ? 1 : -1));
+  const asc = approved
+    .filter((m) => m.rallies.length > 0)
+    .sort((a, b) => (a.date > b.date ? 1 : -1));
   const points: AxisTrendPoint[] = [];
   for (let i = 1; i <= asc.length; i++) {
     const subset = asc.slice(0, i);
@@ -164,7 +168,7 @@ export function bestDataOfMatch(m: Match): GoodData {
   // サーブ種別ごとの得点率
   const groups = new Map<string, { wins: number; total: number }>();
   for (const r of m.rallies) {
-    if (r.server !== 'me') continue;
+    if (r.server !== 'me' || r.serveType === UNKNOWN_SERVE) continue;
     const g = groups.get(r.serveType) ?? { wins: 0, total: 0 };
     g.total += 1;
     if (r.winner === 'me') g.wins += 1;

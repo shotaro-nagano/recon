@@ -1,7 +1,7 @@
 /* ============================================================
    CODENAME COACH — 16タイプ定数 (types/types.md / DESIGN.md 準拠)
    ============================================================ */
-import type { AxisKey, AxisPole, CodenameKey, Course, Persona, ServeType, Skin } from './types';
+import type { AxisKey, AxisPole, CodenameKey, Course, MatchKind, ServeType, Skin } from './types';
 
 export interface CodenameDef {
   key: CodenameKey;
@@ -115,11 +115,12 @@ export const SERVE_TYPES: ServeType[] = [
   'ロング', 'ショート下', 'ショートナックル', '巻き込み', 'YG', '横回転',
 ];
 
-export const PERSONA_INFO: Record<Persona, { label: string; desc: string }> = {
-  operator: { label: 'オペレーター', desc: '冷静なオペレーター風。「PHANTOM、状況を共有する」' },
-  passion: { label: '熱血', desc: '熱血コーチ風。「いくぞ! ここからが本番だ!」' },
-  analyst: { label: 'アナリスト', desc: 'フラットな分析官風。事実と数値を淡々と' },
-};
+/** 球種が取得できなかったサーブのセンチネル。球種別の集計・多様性からは除外する */
+export const UNKNOWN_SERVE = '不明';
+
+/** 扱わない領域(鉄則3): フォーム細部 / 体調・怪我・疲労 / 深いメンタル相談 */
+export const OUT_OF_SCOPE_NOTICE =
+  'フォームの細部・体調や怪我・深いメンタル相談はAIの担当外。監督・コーチ・トレーナーに相談を。';
 
 export const SKIN_INFO: Record<Skin, { label: string; desc: string }> = {
   A: { label: 'SKIN A', desc: 'シャープな短髪・がっちり体格' },
@@ -135,3 +136,16 @@ export const STYLE_OPTIONS = [
 export const GRIP_OPTIONS = [
   '右シェーク', '左シェーク', '右ペン', '左ペン',
 ];
+
+/* ---- 試合の種別(フォルダ表示・手入力・CSVメタ用) ---- */
+export const MATCH_KINDS: { value: MatchKind; label: string; short: string }[] = [
+  { value: '公式戦', label: '公式戦・大会', short: '公式戦' },
+  { value: '練習試合', label: '練習試合', short: '練習' },
+  { value: '合宿・遠征', label: '合宿・遠征', short: '合宿' },
+  { value: 'その他', label: 'その他', short: 'その他' },
+];
+
+/** 未設定(undefined)も含めて種別を正規化する */
+export function matchKindOf(kind: MatchKind | undefined): MatchKind {
+  return kind && MATCH_KINDS.some((k) => k.value === kind) ? kind : 'その他';
+}

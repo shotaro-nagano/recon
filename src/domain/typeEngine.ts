@@ -66,9 +66,12 @@ export function computeTypeResult(
   today: string,
 ): TypeResult {
   const beta = isBeta(settings, today);
-  const matchCount = approvedMatches.length;
-  const pt = totalPt(approvedMatches);
-  const axes = matchCount > 0 ? computeAxes(approvedMatches) : [];
+  // ラリー記録のある承認済み試合のみが実測の計算ソース。
+  // 結果だけ手入力した試合(練習試合など)は記録には残るが判定数には数えない。
+  const rallied = approvedMatches.filter((m) => m.rallies.length > 0);
+  const matchCount = rallied.length;
+  const pt = totalPt(rallied);
+  const axes = matchCount > 0 ? computeAxes(rallied) : [];
 
   if (matchCount >= MEASURED_MIN_MATCHES) {
     const find = (k: AxisKey) => axes.find((a) => a.axis === k)!;
@@ -84,7 +87,7 @@ export function computeTypeResult(
       variant,
       boundaryWith: boundaryPartner(axes),
       axes,
-      clutch: computeClutch(approvedMatches) ?? undefined,
+      clutch: computeClutch(rallied) ?? undefined,
       beta,
       totalPt: pt,
       matchCount,
@@ -98,7 +101,7 @@ export function computeTypeResult(
       codename: p.codename,
       variant: p.variant,
       axes,
-      clutch: computeClutch(approvedMatches) ?? undefined,
+      clutch: computeClutch(rallied) ?? undefined,
       beta,
       totalPt: pt,
       matchCount,
@@ -125,7 +128,8 @@ export function shouldProposeTypeChange(
   if (current.codename === result.codename && current.variant === result.variant) {
     return { propose: false, reason: '変更なし' };
   }
-  const recent2 = [...approvedMatches]
+  const recent2 = approvedMatches
+    .filter((m) => m.rallies.length > 0)
     .sort((a, b) => (a.date < b.date ? 1 : -1))
     .slice(0, 2);
   if (recent2.length < 2) return { propose: false, reason: '連続観測が不足(2試合未満)' };

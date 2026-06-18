@@ -34,7 +34,8 @@ selectPendingApprovals(s): Approval[]
 // actions:
 setSettings(p: Partial<Settings>)
 completeDiagnosis(answers: DiagnosisAnswers)   // 仮タイプ付与+運用開始日設定
-addMatch(m: Match)                              // 未承認として追加
+addMatch(m: Match)                              // 試合を追加(CSVは未承認 / 手入力は承認済みで追加)
+updateMatchMeta(id, {tournament?, kind?, note?})// 試合のメタ情報のみ更新(ラリー・承認状態は不変)
 approveMatch(id)                                // 承認→自動パイプライン(確定タグ提案等が approvals に積まれる)
 rejectMatch(id, reason?)                        // 不採用→未取込リストへ
 deleteMatch(id)
@@ -49,11 +50,14 @@ loadDemo() / resetAll()
 
 ### 型 `@/domain/types`
 
-主要型: `Match, RallyRow, Course(1-6), ServeType, DiagnosisAnswers, TypeResult, AxisResult, SelfKarte, TendencyEntry(status: observed|confirmed|resolved), CollapseLoop, CoachingMemo, PracticeLogEntry, PracticeAssignment, OpponentKarte, Approval, SessionLog, Settings, Persona, Skin, CodenameKey, Variant('alpha'|'omega'), MatchupResult`
+主要型: `Match, RallyRow, Course(1-6), ServeType, MatchKind('公式戦'|'練習試合'|'合宿・遠征'|'その他'), DiagnosisAnswers, TypeResult, AxisResult, SelfKarte, TendencyEntry(status: observed|confirmed|resolved), CollapseLoop, CoachingMemo, PracticeLogEntry, PracticeAssignment, OpponentKarte, Approval, SessionLog, Settings, Persona, Skin, CodenameKey, Variant('alpha'|'omega'), MatchupResult`
+
+`Match` には任意フィールド `tournament?(大会名)` / `kind?: MatchKind(種別)` / `note?(一言メモ)` がある。
+**結果だけの手入力試合**は `rallies: []` ・ `source: '手入力'` ・ `approved: true`(本人入力=承認済み)で追加され、記録には残るがラリーが無いため**タイプ計算・分析窓には数えない**(`computeTypeResult` 等が `rallies.length>0` で除外)。
 
 ### 定数 `@/domain/constants`
 
-`CODENAMES`(8タイプ定義: style/winPattern/color/motif), `CODENAME_KEYS`, `AXIS_INFO`, `COURSE_LABELS`(1=バック前…6=フォア奥), `SERVE_TYPES`, `PERSONA_INFO`, `SKIN_INFO`, `STYLE_OPTIONS`, `GRIP_OPTIONS`, `MEASURED_MIN_MATCHES`(=5)
+`CODENAMES`(8タイプ定義: style/winPattern/color/motif), `CODENAME_KEYS`, `AXIS_INFO`, `COURSE_LABELS`(1=バック前…6=フォア奥), `SERVE_TYPES`, `PERSONA_INFO`, `SKIN_INFO`, `STYLE_OPTIONS`, `GRIP_OPTIONS`, `MEASURED_MIN_MATCHES`(=5), `MATCH_KINDS`({value,label,short}[]), `matchKindOf(kind)`(未設定→'その他')
 
 ### エンジン
 
@@ -87,8 +91,8 @@ voice(persona)(kind, ctx) // kind: greet|preMatch|postGood|postIssue|weekly|data
 OUT_OF_SCOPE_NOTICE        // 扱わない領域の定型文
 
 // @/domain/csv
-parseMatchCsv(text, id): {match|null, errors[]}
-serializeMatchCsv(m): string
+parseMatchCsv(text, id): {match|null, errors[]}   // メタ行(#): date/opponent/tournament/kind/note/result/source
+serializeMatchCsv(m): string                       // tournament/kind/note があれば # 行に出力
 CSV_TEMPLATE: string
 
 // @/domain/stats
@@ -106,6 +110,8 @@ typeColor(codename): string
 <Screen title right?>{children}</Screen>     // 画面ラッパー(タイトルはOswald表示)
 <Card accent?>...</Card>
 <SectionLabel>...</SectionLabel>
+<Collapsible title defaultOpen? openLabel? closeLabel?>...</Collapsible>  // 「もっと見る」折りたたみ。要点を見せ詳細は畳む(簡素化UIの基本部品)
+<MatchKindBadge kind? />                      // 試合の種別バッジ(未設定は「その他」)
 <EmptyState title hint? action? />           // 空状態は誘いにする
 <TypeBadge codename variant? beta? boundaryWith? />
 <CourseBadge course />                        // 1-6の六角バッジ
@@ -227,7 +233,9 @@ codenameDesc(codename): string
 ## MatchesScreen (`src/screens/MatchesScreen.tsx`) + MatchDetailScreen (`src/screens/MatchDetailScreen.tsx`)
 
 試合データ管理。
-- 一覧: 日付降順。スコア(mySets-oppSets を `.mono`)、相手名、大会、ソース、承認状態(未承認は `accent` カードで上部に)
+- **承認待ち**(最上部・`accent`): 未承認試合カード(種別バッジ+大会名併記)
+- **試合の記録**(本体): 承認済み+手入力試合を **年 → 月フォルダ**で表示(`MonthFolder` で開閉、最新月は既定で開く)。月見出しに `N試合 / X勝Y敗(同点があれば Z分)`。各行は 日・相手・スコア・`MatchKindBadge`・大会名・(ラリー0なら「結果のみ」)
+- **記録する**: 「結果をかんたん入力」(日付/相手/スコア/種別/大会名/メモ → `addMatch` で `approved:true`・`rallies:[]`。同点は登録不可・セットは0-7)と「CSVから取り込む」の2入口
 - **承認フロー**: 未承認試合カード→「内容を確認して承認」→ 詳細プレビュー(ラリー数・セットスコア・サーブ内訳の要約)→「承認する」(`approveMatch`)/「不採用にする」(`rejectMatch`→未取込リスト行きと説明)
 - **インポート**: CSV貼り付け(textarea)+ファイル選択(`<input type=file accept=".csv,text/csv">`、FileReader)。`parseMatchCsv` 使用。エラーは行番号つきで表示。`CSV_TEMPLATE` を「テンプレートを見る」で開示
 - 取込時に相手名が `opponents` に存在すれば `opponentId` を紐付け、なければ未紐付けのまま(試合後モードでカルテ作成を促す)

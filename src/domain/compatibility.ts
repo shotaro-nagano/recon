@@ -77,7 +77,10 @@ export function matchup(
     const sameTypeOppIds = history.opponents
       .filter((o) => o.provisionalCodename === opp.codename)
       .map((o) => o.id);
-    const vs = history.matches.filter((m) => m.approved && sameTypeOppIds.includes(m.opponentId));
+    // ラリー記録があり勝敗の付いた試合のみを相性補正の証拠にする(結果のみ手入力・引き分けは除外)
+    const vs = history.matches.filter(
+      (m) => m.approved && m.rallies.length > 0 && m.mySets !== m.oppSets && sameTypeOppIds.includes(m.opponentId),
+    );
     sampleSize = vs.length;
     if (sampleSize >= 3) {
       const wins = vs.filter((m) => m.mySets > m.oppSets).length;

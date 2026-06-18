@@ -5,7 +5,7 @@
    診断は JOKER-Ω と答えており、実測とのギャップ演出が見える
    ============================================================ */
 import type {
-  Approval, CoachingMemo, CollapseLoop, Course, DiagnosisAnswers, Match,
+  Approval, CoachingMemo, CollapseLoop, Course, DiagnosisAnswers, Match, MatchKind,
   OpponentKarte, PracticeAssignment, PracticeLogEntry, RallyRow, SelfKarte,
   ServeType, SessionLog, Settings, TendencyEntry,
 } from './types';
@@ -30,7 +30,8 @@ function isoDaysAgo(today: string, days: number): string {
 
 function simulateMatch(
   rng: () => number, id: string, date: string,
-  opponentId: string, opponentName: string, tournament: string, approved: boolean,
+  opponentId: string, opponentName: string, tournament: string,
+  kind: MatchKind, approved: boolean,
 ): Match {
   const rallies: RallyRow[] = [];
   let mySets = 0; let oppSets = 0; let setNo = 0;
@@ -76,7 +77,7 @@ function simulateMatch(
     if (my > opp) mySets += 1; else oppSets += 1;
   }
   return {
-    id, date, opponentId, opponentName, tournament,
+    id, date, opponentId, opponentName, tournament: tournament || undefined, kind,
     mySets, oppSets, source: 'デモ', approved,
     approvedAt: approved ? date : undefined,
     rallies,
@@ -123,20 +124,20 @@ export function buildDemoData(today: string): DemoData {
     },
   ];
 
-  const schedule: { days: number; opp: number; t: string; approved: boolean }[] = [
-    { days: 44, opp: 1, t: '市民大会', approved: true },
-    { days: 39, opp: 0, t: '練習試合', approved: true },
-    { days: 32, opp: 1, t: '市民大会', approved: true },
-    { days: 25, opp: 0, t: '県リーグ', approved: true },
-    { days: 18, opp: 0, t: '県リーグ', approved: true },
-    { days: 11, opp: 2, t: '練習試合', approved: true },
-    { days: 5, opp: 2, t: '練習試合', approved: true },
-    { days: 2, opp: 1, t: '県リーグ', approved: false }, // 承認フロー体験用
+  const schedule: { days: number; opp: number; t: string; kind: MatchKind; approved: boolean }[] = [
+    { days: 44, opp: 1, t: '市民大会', kind: '公式戦', approved: true },
+    { days: 39, opp: 0, t: '', kind: '練習試合', approved: true },
+    { days: 32, opp: 1, t: '市民大会', kind: '公式戦', approved: true },
+    { days: 25, opp: 0, t: '県リーグ', kind: '公式戦', approved: true },
+    { days: 18, opp: 0, t: '県リーグ', kind: '公式戦', approved: true },
+    { days: 11, opp: 2, t: '', kind: '練習試合', approved: true },
+    { days: 5, opp: 2, t: '', kind: '練習試合', approved: true },
+    { days: 2, opp: 1, t: '県リーグ', kind: '公式戦', approved: false }, // 承認フロー体験用
   ];
   const matches = schedule.map((s, i) =>
     simulateMatch(
       rng, `demo-m${i + 1}`, isoDaysAgo(today, s.days),
-      opponents[s.opp].id, opponents[s.opp].name, s.t, s.approved,
+      opponents[s.opp].id, opponents[s.opp].name, s.t, s.kind, s.approved,
     ),
   );
 
@@ -228,12 +229,8 @@ export function buildDemoData(today: string): DemoData {
     onboarded: true,
     tourSeen: true,
     simpleMode: false, // デモは全機能を見せる
-    chatEngine: 'rule',
-    persona: 'operator',
     skin: 'A',
     operationStartDate: isoDaysAgo(today, 21), // β校正期間中
-    offseason: false,
-    menuGranularity: 'ふわっと',
   };
 
   const approvals: Approval[] = [];

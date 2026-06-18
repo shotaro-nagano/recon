@@ -2,9 +2,10 @@
    共通UI部品 — 全画面で使う最小限のプリミティブ
    ボタン文言は動詞をそのまま / エラーは原因と次の行動 / 空状態は誘い
    ============================================================ */
+import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { CODENAMES, VARIANT_READING } from '@/domain/constants';
-import type { Approval, CodenameKey, Course, Variant } from '@/domain/types';
+import { CODENAMES, matchKindOf, VARIANT_READING } from '@/domain/constants';
+import type { Approval, CodenameKey, Course, MatchKind, Variant } from '@/domain/types';
 import { typeColor } from '@/domain/accent';
 
 /* ---- 画面ラッパー ---- */
@@ -33,6 +34,69 @@ export function Card({ children, accent = false, style }: { children: ReactNode;
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return <div className="section-label">{children}</div>;
+}
+
+/* ---- 折りたたみ(「もっと見る」: 要点だけ見せて詳細は畳む)
+   原則 defaultOpen=false(基本は閉じる)。閉じている間も summary で要点を見せられる。 ---- */
+export function Collapsible({
+  title, defaultOpen = false, openLabel, closeLabel, summary, children,
+}: {
+  title: ReactNode;
+  defaultOpen?: boolean;
+  /** 閉じている時のボタン文言(既定: 「{title}を見る」) */
+  openLabel?: string;
+  /** 開いている時のボタン文言(既定: 「{title}を閉じる」) */
+  closeLabel?: string;
+  /** 閉じている時にボタン下へ出す要点プレビュー(任意) */
+  summary?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const label = open
+    ? (closeLabel ?? (typeof title === 'string' ? `${title}を閉じる` : '閉じる'))
+    : (openLabel ?? (typeof title === 'string' ? `${title}を見る` : 'もっと見る'));
+  return (
+    <div>
+      <button
+        type="button"
+        className="btn btn-ghost"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        style={{ width: '100%', justifyContent: 'space-between', paddingLeft: 4, paddingRight: 4 }}
+      >
+        <span style={{ textAlign: 'left' }}>{label}</span>
+        <span aria-hidden="true" className="mono" style={{ fontSize: 12, flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {!open && summary != null && (
+        <div className="small muted" style={{ marginTop: 6, paddingLeft: 4 }}>{summary}</div>
+      )}
+      {open && <div className="stack fade-in" style={{ marginTop: 12 }}>{children}</div>}
+    </div>
+  );
+}
+
+/* ---- 試合の種別バッジ(公式戦/練習試合/合宿・遠征/その他) ---- */
+export function MatchKindBadge({ kind }: { kind?: MatchKind }) {
+  const k = matchKindOf(kind);
+  const official = k === '公式戦';
+  return (
+    <span
+      className="small"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '1px 9px',
+        borderRadius: 'var(--radius-pill)',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+        background: official ? 'var(--accent-faint)' : 'transparent',
+        color: official ? 'var(--accent)' : 'var(--line-dim)',
+        border: official ? '1px solid var(--accent-soft)' : '1px solid var(--divider-strong)',
+      }}
+    >
+      {k}
+    </span>
+  );
 }
 
 /* ---- 空状態は誘いにする ---- */

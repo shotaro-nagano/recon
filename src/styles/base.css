@@ -285,12 +285,47 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 }
 .tour-pop { animation: tour-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
+/* ---- データ可視化のアニメーション ---- */
+/* 出現ポップ(ヒートマップのセル・バッジなど。stagger は inline の animation-delay で) */
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.pop-in { animation: pop-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* レーダー等を中心から展開 */
+@keyframes grow-center { from { opacity: 0; transform: scale(0.55); } to { opacity: 1; transform: scale(1); } }
+.grow-center { transform-box: fill-box; transform-origin: center; animation: grow-center 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* 線を描くように出す(スコア推移・シーケンス図)。--len に総延長を入れる */
+@keyframes draw-stroke { from { stroke-dashoffset: var(--len, 1200); } to { stroke-dashoffset: 0; } }
+.draw-stroke { animation: draw-stroke 0.9s ease both; }
+
+/* 画面遷移(ルート変更時のページ・イン) */
+@keyframes page-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.page-enter { animation: page-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* 矢印を光が流れる(シーケンス図・崩壊ループ) */
+@keyframes arrow-flow { 0% { opacity: 0.25; } 50% { opacity: 1; } 100% { opacity: 0.25; } }
+.arrow-flow { animation: arrow-flow 1.4s ease-in-out infinite; }
+
+/* 紙吹雪(祝い演出。1ピースぶん。inline で色・left・delay・回転を指定) */
+@keyframes confetti-fall {
+  0% { opacity: 0; transform: translateY(-8px) rotate(0deg); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(120px) rotate(540deg); }
+}
+.confetti-piece { position: absolute; top: 0; width: 7px; height: 11px; border-radius: 1px; animation: confetti-fall 1.5s ease-in forwards; }
+
 @media (prefers-reduced-motion: reduce) {
   .emblem-reveal { animation: fade-in 0.5s ease both; }
-  .fade-in, .tour-in, .tour-pop { animation: none; }
+  .fade-in, .tour-in, .tour-pop, .pop-in, .grow-center, .draw-stroke, .page-enter, .arrow-flow, .confetti-piece { animation: none; }
+  .confetti-piece { display: none; }
   .bubble.typing span { animation: none; opacity: 0.5; }
   .accent-fade, .meter-band { transition: none; }
 }
+/* 戦術カードはアニメ完全禁止(.tactical-root で無効化済み)を尊重 */
 
 /* ---- テーブル ---- */
 table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -378,3 +413,162 @@ table.data tr:last-child td { border-bottom: 0; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: rgba(27, 37, 53, 0.18); border-radius: var(--radius-pill); border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(27, 37, 53, 0.3); background-clip: padding-box; }
+
+/* ---- コーチの3タブ(画面下・グローバルナビの上にフロート) ---- */
+.coach-tabs {
+  position: sticky;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 10px);
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 20px;
+  padding: 7px;
+  background: var(--deep-court);
+  border: 1px solid var(--divider-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgba(16, 24, 40, 0.13);
+}
+.coach-tab {
+  position: relative;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  padding: 9px 4px;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  color: var(--line-dim);
+  font-weight: 700;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.coach-tab:hover { color: var(--court-line); }
+.coach-tab.active {
+  background: var(--accent-faint);
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+.coach-tab-icon { font-size: 20px; line-height: 1; }
+.coach-tab-label { font-size: 11px; }
+.coach-tab-reco {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.2);
+}
+
+/* ---- 戦術カード(カードデッキ・タップで理由が開く) ---- */
+.tactic-deck { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 520px) { .tactic-deck { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1040px) { .tactic-deck { grid-template-columns: repeat(3, 1fr); } }
+
+.tactic-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  width: 100%;
+  border: 1.5px solid var(--divider-strong);
+  border-radius: 14px;
+  background: var(--deep-court);
+  padding: 15px 14px 12px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+}
+/* 上辺のカラーバー(スート感) */
+.tactic-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--cat, var(--accent));
+}
+.tactic-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(16, 24, 40, 0.12); }
+.tactic-card:focus-visible { outline: 2px solid var(--cat, var(--accent)); outline-offset: 2px; }
+.tactic-card.open { border-color: var(--cat, var(--accent)); box-shadow: 0 10px 26px rgba(16, 24, 40, 0.16); }
+
+/* カード番号(大きく薄く・トレカ風) */
+.tactic-card-no {
+  position: absolute;
+  top: 7px;
+  right: 11px;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--cat, var(--accent));
+  opacity: 0.16;
+  pointer-events: none;
+}
+.tactic-card-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  max-width: calc(100% - 34px);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cat, var(--accent));
+  background: color-mix(in srgb, var(--cat, var(--accent)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cat, var(--accent)) 30%, transparent);
+  border-radius: var(--radius-pill);
+  padding: 2px 9px;
+  margin-bottom: 9px;
+}
+.tactic-card-title { font-size: 15.5px; font-weight: 700; line-height: 1.36; color: var(--court-line); }
+.tactic-card-reason {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--divider-strong);
+  font-size: 13px;
+  line-height: 1.58;
+  color: var(--line-dim);
+}
+.tactic-card-hint {
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--line-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tactic-card.open .tactic-card-hint { color: var(--cat, var(--accent)); }
+
+/* ---- 横スクロールチップ(カテゴリ/タグ絞り込み) ---- */
+.chip-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* PC/タブレット: 下タブは横並び・幅を抑える(グローバルナビは左レール) */
+@media (min-width: 900px) {
+  .coach-tabs {
+    bottom: 16px;
+    max-width: 540px;
+  }
+  .coach-tab { flex-direction: row; gap: 8px; padding: 11px; min-height: 0; }
+  .coach-tab-label { font-size: 13px; }
+}

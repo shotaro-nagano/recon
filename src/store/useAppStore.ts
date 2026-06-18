@@ -7,9 +7,10 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { del, get as idbGet, set as idbSet } from 'idb-keyval';
 import type {
-  Approval, ChatMessage, DiagnosisAnswers, KarteSnapshot, Match, MissingMatch,
+  Approval, DiagnosisAnswers, KarteSnapshot, Match, MissingMatch,
   OpponentKarte, PracticeLogEntry, SelfKarte, SessionLog, Settings,
 } from '@/domain/types';
+import type { PracticeFocus, PracticeFocusEntry } from '@/domain/coach/drills';
 import { provisionalType } from '@/domain/typeEngine';
 import { applyApproval, runPostApprovalPipeline } from '@/domain/pipeline';
 import { buildDemoData } from '@/domain/demo';
@@ -34,12 +35,8 @@ const defaultSettings = (): Settings => ({
   onboarded: false,
   tourSeen: false,
   simpleMode: true,
-  chatEngine: 'rule',
-  persona: 'operator',
   skin: 'A',
   operationStartDate: null,
-  offseason: false,
-  menuGranularity: 'ふわっと',
 });
 
 const MAX_SNAPSHOTS = 30;
@@ -54,11 +51,13 @@ export interface AppState {
   approvals: Approval[];
   sessions: SessionLog[];
   snapshots: KarteSnapshot[];
-  chat: ChatMessage[];
+  /** 練習フォーカス選択の履歴(裏DB) */
+  practiceFocusLog: PracticeFocusEntry[];
 
   setSettings: (p: Partial<Settings>) => void;
   completeDiagnosis: (answers: DiagnosisAnswers) => void;
   addMatch: (m: Match) => void;
+  updateMatchMeta: (id: string, patch: Pick<Match, 'tournament' | 'kind' | 'note'>) => void;
   approveMatch: (id: string) => void;
   rejectMatch: (id: string, reason?: MissingMatch['reason']) => void;
   deleteMatch: (id: string) => void;
@@ -68,8 +67,7 @@ export interface AppState {
   upsertOpponent: (o: OpponentKarte) => void;
   addPracticeLog: (e: PracticeLogEntry) => void;
   appendSession: (s: Omit<SessionLog, 'id'>) => void;
-  pushChat: (m: Omit<ChatMessage, 'id' | 'at'>) => void;
-  resetChat: () => void;
+  recordPracticeFocus: (focus: PracticeFocus) => void;
   loadDemo: () => void;
   resetAll: () => void;
 }
@@ -101,7 +99,7 @@ export const useAppStore = create<AppState>()(
       approvals: [],
       sessions: [],
       snapshots: [],
-      chat: [],
+      practiceFocusLog: [],
 
       setSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),
 
@@ -126,6 +124,22 @@ export const useAppStore = create<AppState>()(
       },
 
       addMatch: (m) => set((s) => ({ matches: [...s.matches, m] })),
+
+      // 試合のメタ情報(大会名・種別・メモ)だけを更新する。
+      // ラリーデータ・承認状態には触れないのでスナップショットもパイプラインも不要。
+      updateMatchMeta: (id, patch) =>
+        set((s) => ({
+          matches: s.matches.map((m) =>
+            m.id === id
+              ? {
+                  ...m,
+                  tournament: patch.tournament?.trim() || undefined,
+                  kind: patch.kind,
+                  note: patch.note?.trim() || undefined,
+                }
+              : m,
+          ),
+        })),
 
       approveMatch: (id) => {
         const s = get();
@@ -215,12 +229,13 @@ export const useAppStore = create<AppState>()(
       appendSession: (log) =>
         set((s) => ({ sessions: [...s.sessions, { ...log, id: uid() }].slice(-100) })),
 
-      pushChat: (m) =>
+      recordPracticeFocus: (focus) =>
         set((s) => ({
-          chat: [...s.chat, { ...m, id: uid(), at: new Date().toISOString() }].slice(-80),
+          practiceFocusLog: [
+            { id: uid(), date: todayStr(), focus },
+            ...s.practiceFocusLog,
+          ].slice(0, 100),
         })),
-
-      resetChat: () => set({ chat: [] }),
 
       loadDemo: () => {
         const demo = buildDemoData(todayStr());
@@ -233,6 +248,7 @@ export const useAppStore = create<AppState>()(
           approvals: demo.approvals,
           sessions: demo.sessions,
           snapshots: [],
+          practiceFocusLog: [],
         });
       },
 
@@ -246,7 +262,7 @@ export const useAppStore = create<AppState>()(
           approvals: [],
           sessions: [],
           snapshots: [],
-          chat: [],
+          practiceFocusLog: [],
         }),
     }),
     {

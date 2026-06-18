@@ -5,10 +5,13 @@
    - 全スコアは0–100に正規化。50±5は境界帯
    ============================================================ */
 import {
-  BOUNDARY_HI, BOUNDARY_LO, DECAY_HALF_LIFE_MATCHES, MAIN_WINDOW_MATCHES,
+  BOUNDARY_HI, BOUNDARY_LO, DECAY_HALF_LIFE_MATCHES, MAIN_WINDOW_MATCHES, UNKNOWN_SERVE,
 } from './constants';
 import type { AxisKey, AxisPole, AxisResult, ClutchStat, Match, RallyRow } from './types';
 import { clamp, effectiveN, entropyBits, jackknifeCI, norm01, wilsonHalfWidth } from './stats';
+
+/** 軸ごとの最低実効標本数。これ未満は信頼できないので境界帯(低信頼)扱いにする */
+const MIN_PT: Record<AxisKey, number> = { AS: 6, CN: 5, VR: 6, FL: 5 };
 
 /* ---- 正規化の基準レンジ(運用定数: β校正期間に調整する) ---- */
 const REF = {
@@ -28,7 +31,10 @@ interface WeightedRally extends RallyRow {
 
 /** 直近順(新→旧)に並べ、試合数ベースの減衰重みを付与してラリーを平坦化 */
 function flattenRecent(matches: Match[], window = MAIN_WINDOW_MATCHES): WeightedRally[] {
-  const sorted = [...matches].sort((a, b) => (a.date < b.date ? 1 : -1));
+  // ラリー記録のある試合のみが計算ソース(結果だけ手入力した試合は窓を消費しない)
+  const sorted = [...matches]
+    .filter((m) => m.rallies.length > 0)
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
   const recent = sorted.slice(0, window);
   const out: WeightedRally[] = [];
   recent.forEach((m, i) => {
@@ -83,10 +89,12 @@ function extract(rallies: WeightedRally[]): RawMetrics {
   const earlyRallies = rallies.filter(isEarly);
   const lateRallies = rallies.filter(isLate);
   const myServes = rallies.filter((r) => r.server === 'me');
+  // 球種不明は「多様性」にも信頼度(serveN)にも数えない(変化Vスコアの水増しを防ぐ)
+  const realServes = myServes.filter((r) => r.serveType !== UNKNOWN_SERVE);
 
   // サーブ多様性: 球種×前後のカテゴリ分布
   const catCounts = new Map<string, number>();
-  for (const r of myServes) {
+  for (const r of realServes) {
     const depth = r.serveCourse <= 3 ? '前' : '奥';
     const key = `${r.serveType}|${depth}`;
     catCounts.set(key, (catCounts.get(key) ?? 0) + r.w);
@@ -102,8 +110,8 @@ function extract(rallies: WeightedRally[]): RawMetrics {
     overallN: nEff(rallies),
     clutchWinRate: wmean(clutchRallies, (r) => (r.winner === 'me' ? 1 : 0)),
     clutchN: nEff(clutchRallies),
-    entropyNorm: myServes.length > 0 ? h / ENTROPY_MAX_BITS : null,
-    serveN: nEff(myServes),
+    entropyNorm: realServes.length > 0 ? h / ENTROPY_MAX_BITS : null,
+    serveN: nEff(realServes),
     earlyWinRate: wmean(earlyRallies, (r) => (r.winner === 'me' ? 1 : 0)),
     earlyN: nEff(earlyRallies),
     lateWinRate: wmean(lateRallies, (r) => (r.winner === 'me' ? 1 : 0)),
@@ -158,6 +166,7 @@ export function computeAxes(approvedMatches: Match[]): AxisResult[] {
   const all = flattenRecent(approvedMatches);
   const metrics = extract(all);
   const window = [...approvedMatches]
+    .filter((m) => m.rallies.length > 0)
     .sort((a, b) => (a.date < b.date ? 1 : -1))
     .slice(0, MAIN_WINDOW_MATCHES);
 
@@ -174,12 +183,14 @@ export function computeAxes(approvedMatches: Match[]): AxisResult[] {
     }
     const ci = jackknifeCI(loo);
     const pt = Math.round(PT_OF[axis](metrics));
+    // 実効標本が最低数に満たない軸は、断定せず境界帯(低信頼)として扱う
+    const reliable = pt >= MIN_PT[axis];
     return {
       axis,
       score: Math.round(score * 10) / 10,
       ci: Math.round(ci * 10) / 10,
       pole: poleOf(axis, score),
-      boundary: score >= BOUNDARY_LO && score <= BOUNDARY_HI,
+      boundary: !reliable || (score >= BOUNDARY_LO && score <= BOUNDARY_HI),
       pt,
     };
   });
@@ -201,11 +212,15 @@ export function axisPolesOfMatch(match: Match): Partial<Record<AxisKey, AxisPole
 export function computeClutch(approvedMatches: Match[]): ClutchStat | null {
   const all = flattenRecent(approvedMatches);
   const m = extract(all);
-  if (m.clutchWinRate == null || m.overallWinRate == null || m.clutchN < 1) return null;
+  if (m.clutchWinRate == null || m.overallWinRate == null || m.clutchN < 2) return null;
+  // diff は「クラッチ率 − 全体率」の2比率の差。片側Wilsonだと全体率側のばらつきを無視して
+  // CIを過小評価するため、両比率のWilson半幅を二乗和平方根で合成する(保守的)。
+  const wc = wilsonHalfWidth(m.clutchWinRate, m.clutchN);
+  const wo = wilsonHalfWidth(m.overallWinRate, m.overallN);
   return {
     diff: m.clutchWinRate - m.overallWinRate,
     pt: Math.round(m.clutchN),
-    ci: wilsonHalfWidth(m.clutchWinRate, m.clutchN),
+    ci: Math.sqrt(wc * wc + wo * wo),
   };
 }
 

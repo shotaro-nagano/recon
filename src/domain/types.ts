@@ -13,7 +13,6 @@ export type CodenameKey =
 /** α=先行型(F) / Ω=後半に牙を剥く型(L) */
 export type Variant = 'alpha' | 'omega';
 
-export type Persona = 'operator' | 'passion' | 'analyst';
 export type Skin = 'A' | 'B' | 'C';
 
 /* ---------------- 試合データ (承認済みCSVが唯一の計算ソース) ---------------- */
@@ -41,12 +40,20 @@ export interface RallyRow {
 
 export type MatchSource = '得点チェックリスト' | '撮影判定' | '手入力' | 'デモ';
 
+/** 試合の種別(フォルダ表示・記録用。タイプ計算には影響しない) */
+export type MatchKind = '公式戦' | '練習試合' | '合宿・遠征' | 'その他';
+
 export interface Match {
   id: string;
   date: string; // YYYY-MM-DD
   opponentId: string;
   opponentName: string;
+  /** 大会名(任意。例: 県リーグ) */
   tournament?: string;
+  /** 種別(任意。未設定は「その他」扱い) */
+  kind?: MatchKind;
+  /** 一言メモ(任意。例: 新サーブを試した試合) */
+  note?: string;
   mySets: number;
   oppSets: number;
   source: MatchSource;
@@ -236,14 +243,6 @@ export interface SessionLog {
   summary: string;
 }
 
-/** AIコーチとのチャット(端末内・外部送信なし) */
-export interface ChatMessage {
-  id: string;
-  role: 'me' | 'coach';
-  text: string;
-  at: string;
-}
-
 export interface KarteSnapshot {
   id: string;
   takenAt: string;
@@ -261,16 +260,9 @@ export interface Settings {
   tourSeen: boolean;
   /** かんたんモード: 上級機能を隠して要点だけ表示(初心者向け既定ON) */
   simpleMode: boolean;
-  /** チャットの応答エンジン: rule=端末内の決まり文句 / device=ブラウザ内蔵AI(端末上で動作) */
-  chatEngine: 'rule' | 'device';
-  persona: Persona;
   skin: Skin;
   /** β校正: 運用開始日から1ヶ月はβ表示 */
   operationStartDate: string | null;
-  /** シーズンオフ(試合がない期間) → 週次は練習ログ中心モード */
-  offseason: boolean;
-  /** 練習メニューの粒度を毎回選ぶ際の既定値 */
-  menuGranularity: 'がっちり' | 'ふわっと';
 }
 
 /* ---------------- 相性 ---------------- */

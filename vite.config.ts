@@ -3,7 +3,13 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath } from 'node:url';
 
+// ビルド(dev時はサーバー起動)時刻。アプリ内に表示して「どのビルドを見ているか」を確認できるようにする(JST)
+const BUILD_STAMP = `${new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 16).replace('T', ' ')} JST`;
+
 export default defineConfig({
+  define: {
+    __APP_BUILD__: JSON.stringify(BUILD_STAMP),
+  },
   plugins: [
     react(),
     VitePWA({

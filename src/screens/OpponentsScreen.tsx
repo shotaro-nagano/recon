@@ -7,10 +7,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { todayStr, uid, useAppStore } from '@/store/useAppStore';
 import { CODENAME_KEYS, CODENAMES } from '@/domain/constants';
 import type { CodenameKey, OpponentKarte, Variant } from '@/domain/types';
-import { Card, EmptyState, Screen, SectionLabel, TypeBadge } from '@/components/ui';
+import { Card, Collapsible, EmptyState, Screen, SectionLabel, TypeBadge } from '@/components/ui';
+import { Ring } from '@/components/charts';
 
-const PRIVACY = 'カルテは本人のみに表示されます。共有・エクスポート機能はありません。';
-const PROVISIONAL_NOTE = '※タイプ判定は暫定です。承認済みの対戦データが増えるほど精度が上がります。';
+const PRIVACY = '🔒 本人のみ・共有なし';
+const PROVISIONAL_NOTE = '※タイプは暫定。対戦が増えるほど精度↑';
 
 /** 改行区切りテキスト ↔ 配列 */
 const toLines = (xs: string[]) => xs.join('\n');
@@ -133,7 +134,9 @@ function OpponentDetail({ id }: { id: string }) {
     );
   }
 
-  const approvedCount = linked.filter((m) => m.approved).length;
+  const wins = linked.filter((m) => m.mySets > m.oppSets).length;
+  const losses = linked.filter((m) => m.mySets < m.oppSets).length;
+  const draws = linked.filter((m) => m.mySets === m.oppSets).length;
 
   const addNote = () => {
     const t = noteText.trim();
@@ -146,18 +149,18 @@ function OpponentDetail({ id }: { id: string }) {
     setNoteTournament('');
   };
 
-  const section = (label: string, items: string[]) => (
-    <div>
-      <p className="small muted" style={{ marginBottom: 4 }}>{label}</p>
-      {items.length === 0 ? (
-        <p className="small muted">未記入</p>
-      ) : (
+  const section = (label: string, items: string[], color: string) =>
+    items.length === 0 ? null : (
+      <div>
+        <p className="small" style={{ marginBottom: 4 }}>
+          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: color, marginRight: 6 }} />
+          <span className="muted">{label}</span>
+        </p>
         <ul style={{ margin: 0, paddingLeft: 20 }}>
           {items.map((x, i) => <li key={i}>{x}</li>)}
         </ul>
-      )}
-    </div>
-  );
+      </div>
+    );
 
   return (
     <Screen
@@ -174,38 +177,54 @@ function OpponentDetail({ id }: { id: string }) {
         <>
           <Card accent>
             <SectionLabel>暫定タイプ</SectionLabel>
-            <div className="stack" style={{ gap: 6 }}>
-              {opp.provisionalCodename ? (
-                <div className="row" style={{ flexWrap: 'wrap' }}>
-                  <TypeBadge codename={opp.provisionalCodename} variant={opp.provisionalVariant} />
-                  <span className="small muted mono">[判定根拠 {opp.judgedPt}pt]</span>
-                </div>
-              ) : (
-                <p className="muted">タイプ未判定 <span className="mono small">[{opp.judgedPt}pt]</span> — 対戦データが不足しています</p>
-              )}
-              <p className="small muted">{PROVISIONAL_NOTE}</p>
-              {opp.affiliation && (
-                <p className="small"><span className="muted">所属: </span>{opp.affiliation}</p>
-              )}
-              <p className="small">
-                <span className="muted">対戦数: </span>
-                <span className="mono">{linked.length}</span>試合
-                (うち承認済み <span className="mono">{approvedCount}</span>)
-              </p>
+            <div className="spread" style={{ alignItems: 'flex-start', gap: 12 }}>
+              <div className="stack" style={{ gap: 6, minWidth: 0 }}>
+                {opp.provisionalCodename ? (
+                  <div className="row" style={{ flexWrap: 'wrap' }}>
+                    <TypeBadge codename={opp.provisionalCodename} variant={opp.provisionalVariant} />
+                    <span className="small" style={{ padding: '1px 9px', borderRadius: 'var(--radius-pill)', fontWeight: 700, border: '1px solid var(--warn)', color: 'var(--warn)' }}>暫定</span>
+                  </div>
+                ) : (
+                  <p className="muted small">タイプ未判定 — 対戦データ不足</p>
+                )}
+                {opp.affiliation && (
+                  <p className="small"><span className="muted">所属: </span>{opp.affiliation}</p>
+                )}
+                {linked.length > 0 ? (
+                  <p className="small">
+                    <span className="muted">対戦 </span><span className="mono">{linked.length}</span>試合 ・{' '}
+                    <span className="mono" style={{ color: 'var(--pos)', fontWeight: 700 }}>{wins}勝</span>
+                    <span className="mono" style={{ color: 'var(--neg)', fontWeight: 700 }}>{losses}敗</span>
+                    {draws > 0 && <span className="mono muted">{draws}分</span>}
+                  </p>
+                ) : (
+                  <p className="small muted">対戦記録なし</p>
+                )}
+              </div>
+              <Ring value={Math.min(1, opp.judgedPt / 50)} center={String(opp.judgedPt)} sub="判定pt" color="var(--accent)" size={84} />
             </div>
+            <p className="small muted" style={{ marginTop: 8 }}>{PROVISIONAL_NOTE}</p>
           </Card>
 
+          <Collapsible title="3項目分析" openLabel="対策メモを見る(サーブ傾向・レシーブの穴・勝負どころ)" closeLabel="とじる">
           <Card>
             <SectionLabel>3項目分析</SectionLabel>
             <div className="stack">
-              {section('サーブ傾向', opp.serveTendency)}
-              <hr className="divider" />
-              {section('レシーブの穴', opp.receiveHoles)}
-              <hr className="divider" />
-              {section('勝負どころの癖', opp.clutchHabits)}
+              {[
+                section('サーブ傾向', opp.serveTendency, 'var(--accent)'),
+                section('レシーブの穴', opp.receiveHoles, 'var(--neg)'),
+                section('勝負どころの癖', opp.clutchHabits, 'var(--warn)'),
+              ].filter(Boolean).map((node, i) => (
+                <div key={i}>{i > 0 && <hr className="divider" style={{ margin: '10px 0' }} />}{node}</div>
+              ))}
+              {opp.serveTendency.length === 0 && opp.receiveHoles.length === 0 && opp.clutchHabits.length === 0 && (
+                <p className="small muted">まだ記入なし。「カルテを編集」で追加できます。</p>
+              )}
             </div>
           </Card>
+          </Collapsible>
 
+          <Collapsible title="対戦メモ" openLabel={`対戦メモを見る・追加(${opp.notes.length}件)`} closeLabel="とじる">
           <Card>
             <SectionLabel>対戦メモ</SectionLabel>
             {opp.notes.length === 0 ? (
@@ -238,6 +257,7 @@ function OpponentDetail({ id }: { id: string }) {
               <button className="btn" disabled={noteText.trim() === ''} onClick={addNote}>メモを追加</button>
             </div>
           </Card>
+          </Collapsible>
 
           <button className="btn" onClick={() => setEditing(true)}>カルテを編集</button>
         </>
@@ -257,6 +277,10 @@ function OpponentList() {
   const [creating, setCreating] = useState(false);
 
   const countOf = (id: string) => matches.filter((m) => m.opponentId === id).length;
+  const recordOf = (id: string) => {
+    const ms = matches.filter((m) => m.opponentId === id);
+    return { w: ms.filter((m) => m.mySets > m.oppSets).length, l: ms.filter((m) => m.mySets < m.oppSets).length };
+  };
   const sorted = useMemo(
     () => [...opponents].sort((a, b) => a.name.localeCompare(b.name, 'ja')),
     [opponents],
@@ -303,9 +327,20 @@ function OpponentList() {
                     )}
                   </div>
                 </div>
-                <span className="small muted">
-                  対戦 <span className="mono">{countOf(o.id)}</span>試合
-                </span>
+                {(() => {
+                  const n = countOf(o.id); const r = recordOf(o.id);
+                  return (
+                    <span className="small" style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <span className="muted">対戦 </span><span className="mono">{n}</span>試合
+                      {n > 0 && (
+                        <><br />
+                          <span className="mono" style={{ color: 'var(--pos)', fontWeight: 700 }}>{r.w}勝</span>
+                          <span className="mono" style={{ color: 'var(--neg)', fontWeight: 700 }}>{r.l}敗</span>
+                        </>
+                      )}
+                    </span>
+                  );
+                })()}
               </div>
             </Card>
           </Link>

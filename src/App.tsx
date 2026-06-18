@@ -14,10 +14,6 @@ import WelcomeScreen from '@/screens/WelcomeScreen';
 import HomeScreen from '@/screens/HomeScreen';
 import DiagnosisScreen from '@/screens/DiagnosisScreen';
 import CoachScreen from '@/screens/CoachScreen';
-import ChatScreen from '@/screens/ChatScreen';
-import TacticalCardScreen from '@/screens/TacticalCardScreen';
-import PostMatchScreen from '@/screens/PostMatchScreen';
-import WeeklyScreen from '@/screens/WeeklyScreen';
 import MatchesScreen from '@/screens/MatchesScreen';
 import MatchDetailScreen from '@/screens/MatchDetailScreen';
 import KarteScreen from '@/screens/KarteScreen';
@@ -32,10 +28,6 @@ const NAV = [
   {
     to: '/coach', label: 'コーチ',
     icon: <><circle cx="12" cy="8" r="3.5" /><path d="M5 20 Q5 14.5 12 14.5 Q19 14.5 19 20" /><path d="M16.5 4.5 L19.5 2.5 M19.5 2.5 L21 5" /></>,
-  },
-  {
-    to: '/chat', label: 'チャット',
-    icon: <><path d="M4 5.5 A1.5 1.5 0 0 1 5.5 4 H18.5 A1.5 1.5 0 0 1 20 5.5 V14.5 A1.5 1.5 0 0 1 18.5 16 H9 L5 19.5 V16 H5.5 A1.5 1.5 0 0 1 4 14.5 Z" /><path d="M8 9 H16 M8 12 H13" /></>,
   },
   {
     to: '/matches', label: '試合',
@@ -70,8 +62,12 @@ export default function App() {
 
   if (!hydrated) {
     return (
-      <div className="app-shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <p className="display muted" style={{ letterSpacing: '0.2em' }}>{APP_NAME}</p>
+      <div className="app-shell" style={{ alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+        <p className="display" style={{ letterSpacing: '0.2em', fontSize: 32, color: 'var(--accent)' }}>{APP_NAME}</p>
+        <div className="bubble typing" aria-label="起動中" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
+          <span /><span /><span />
+        </div>
+        <p className="small muted">起動中…</p>
       </div>
     );
   }
@@ -112,15 +108,11 @@ export default function App() {
         ))}
       </nav>
       <main className="app-main">
+        <div key={location.pathname} className="page-enter">
         <Routes>
           <Route path="/" element={<HomeScreen />} />
           <Route path="/diagnosis" element={<DiagnosisScreen />} />
-          <Route path="/chat" element={<ChatScreen />} />
           <Route path="/coach" element={<CoachScreen />} />
-          <Route path="/coach/pre" element={<TacticalCardScreen />} />
-          <Route path="/coach/post" element={<PostMatchScreen />} />
-          <Route path="/coach/post/:matchId" element={<PostMatchScreen />} />
-          <Route path="/coach/weekly" element={<WeeklyScreen />} />
           <Route path="/matches" element={<MatchesScreen />} />
           <Route path="/matches/:id" element={<MatchDetailScreen />} />
           <Route path="/karte" element={<KarteScreen />} />
@@ -129,6 +121,7 @@ export default function App() {
           <Route path="/settings" element={<SettingsScreen />} />
           <Route path="*" element={<HomeScreen />} />
         </Routes>
+        </div>
       </main>
 
       {/* 使い方ガイド: ホーム初到達時に一度だけ自動表示 */}

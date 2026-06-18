@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
-import { APP_NAME, APP_PITCH, APP_TAGLINE } from '@/brand';
+import { APP_BUILD, APP_NAME, APP_PITCH, APP_TAGLINE } from '@/brand';
 import Emblem from '@/components/Emblem';
 
 export default function WelcomeScreen() {
@@ -87,6 +87,7 @@ export default function WelcomeScreen() {
             <button className="btn btn-ghost" onClick={demo}>デモで試す</button>
           </div>
         </section>
+        <p className="small muted" style={{ marginTop: 14 }}>build: <span className="mono" style={{ color: 'var(--pos)' }}>{APP_BUILD}</span></p>
       </div>
     </div>
   );

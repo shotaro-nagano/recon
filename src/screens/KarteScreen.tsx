@@ -8,11 +8,13 @@ import { todayStr, uid, useAppStore } from '@/store/useAppStore';
 import { computeTypeResult, selfGap } from '@/domain/typeEngine';
 import { courseLossStats, serveStats } from '@/domain/insights';
 import { fmtDiff, fmtRate } from '@/domain/stats';
-import { AXIS_INFO, COURSE_LABELS, MEASURED_MIN_MATCHES } from '@/domain/constants';
+import { COURSE_LABELS, MEASURED_MIN_MATCHES } from '@/domain/constants';
 import type { CollapseLoop, TendencyEntry } from '@/domain/types';
 import {
-  AxisBar, Card, CourseBadge, EmptyState, Screen, SectionLabel, TypeBadge,
+  Card, Collapsible, EmptyState, Screen, SectionLabel, Sparkline, TypeBadge,
 } from '@/components/ui';
+import { CourtHeatmap, RadarChart, StatBars } from '@/components/charts';
+import { typeColor } from '@/domain/accent';
 
 /* ---- 小さな表示部品 ---- */
 
@@ -40,19 +42,19 @@ function LoopCard({ loop, index }: { loop: CollapseLoop; index: number }) {
         </span>
       </div>
       <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-        <span style={flowBox}>{loop.trigger}</span>
+        <span className="pop-in" style={{ ...flowBox, animationDelay: '0s' }}>{loop.trigger}</span>
         {loop.middle && (
           <>
-            <span aria-hidden="true" style={{ color: 'var(--accent)' }}>→</span>
-            <span style={flowBox}>{loop.middle}</span>
+            <span aria-hidden="true" className="arrow-flow" style={{ color: 'var(--warn)', fontWeight: 700 }}>→</span>
+            <span className="pop-in" style={{ ...flowBox, animationDelay: '0.12s' }}>{loop.middle}</span>
           </>
         )}
-        <span aria-hidden="true" style={{ color: 'var(--accent)' }}>→</span>
-        <span style={{ ...flowBox, borderColor: 'var(--accent)' }}>{loop.result}</span>
+        <span aria-hidden="true" className="arrow-flow" style={{ color: 'var(--neg)', fontWeight: 700 }}>→</span>
+        <span className="pop-in" style={{ ...flowBox, borderColor: 'var(--neg)', color: 'var(--neg)', fontWeight: 700, animationDelay: '0.24s' }}>{loop.result}</span>
       </div>
       {loop.escapeAction && (
-        <p className="small" style={{ marginTop: 6 }}>
-          <span className="muted">脱出成功時の行動: </span>{loop.escapeAction}
+        <p className="small pop-in" style={{ marginTop: 6, animationDelay: '0.36s' }}>
+          <span style={{ color: 'var(--pos)', fontWeight: 700 }}>↩ 戻る場所: </span>{loop.escapeAction}
         </p>
       )}
     </div>
@@ -216,37 +218,26 @@ export default function KarteScreen() {
     });
   };
 
+  const hasTypeDetails =
+    result.axes.length > 0 || !!result.clutch || !!gap || karte.typeHistory.length > 0;
+
   return (
     <Screen
       title="自分カルテ"
       right={<Link className="btn btn-ghost" to="/opponents">相手カルテへ</Link>}
     >
-      {/* 基本(診断より) */}
-      <Card>
-        <SectionLabel>基本(診断より)</SectionLabel>
-        {diagnosis ? (
-          <div className="stack" style={{ gap: 4 }}>
-            <div className="spread"><span className="muted small">戦型</span><span>{diagnosis.style}</span></div>
-            <div className="spread"><span className="muted small">利き手・グリップ</span><span>{diagnosis.grip}</span></div>
-            <div className="spread">
-              <span className="muted small">競り合いの自己評価</span>
-              <span className="mono">{diagnosis.selfRating}/5</span>
-            </div>
-            <div className="spread">
-              <span className="muted small">診断日</span>
-              <span className="mono small">{diagnosis.answeredAt.slice(0, 10)}</span>
-            </div>
-          </div>
-        ) : (
+      {/* 診断がまだなら、最初に診断への誘いだけ見せる */}
+      {!diagnosis && (
+        <Card>
           <EmptyState
             title="診断がまだです"
             hint="2分の診断で仮タイプが決まり、カルテが動き出します"
             action={<Link className="btn btn-primary" to="/diagnosis">診断を受ける</Link>}
           />
-        )}
-      </Card>
+        </Card>
+      )}
 
-      {/* CODENAME */}
+      {/* CODENAME(要点 = タイプ。内訳は畳む) */}
       <Card accent>
         <SectionLabel>CODENAME</SectionLabel>
         {result.stage === 'none' || !result.codename ? (
@@ -272,234 +263,270 @@ export default function KarteScreen() {
                 試合(承認済み)。
               </p>
             )}
-            {result.axes.length > 0 && (
-              <div className="stack" style={{ gap: 10 }}>
-                {result.axes.map((a) => {
-                  const info = AXIS_INFO[a.axis];
-                  return (
-                    <AxisBar
-                      key={a.axis}
-                      label={info.label}
-                      loLabel={info.loLabel}
-                      hiLabel={info.hiLabel}
-                      score={a.score}
-                      ci={a.ci}
-                      pt={a.pt}
-                      boundary={a.boundary}
-                    />
-                  );
-                })}
-              </div>
-            )}
-            {result.clutch && (
-              <div className="spread small">
-                <span className="muted">クラッチ指標(9点以遠 − 全体)</span>
-                <span className="mono">{fmtDiff(result.clutch.diff, result.clutch.pt, result.clutch.ci)}</span>
-              </div>
-            )}
-            {gap && (
-              <p className="small">
-                <span className="muted">自己申告ギャップ: </span>{gap.text}
-                <span className="mono muted">(自己評価 {gap.selfRating}/5)</span>
-              </p>
-            )}
-            {karte.typeHistory.length > 0 && (
-              <div>
-                <p className="small muted" style={{ marginBottom: 4 }}>タイプ遷移履歴</p>
-                <div className="stack" style={{ gap: 2 }}>
-                  {karte.typeHistory.map((h, i) => (
-                    <div key={`${h.date}-${i}`} className="row small">
-                      <span className="mono muted">{h.date}</span>
-                      <span>{h.codename}-{h.variant === 'alpha' ? 'α' : 'Ω'}</span>
-                      <span className="muted">{h.stage === 'measured' ? '実測' : '仮'}</span>
+            {hasTypeDetails && (
+              <Collapsible title="タイプの内訳" openLabel="軸スコア・クラッチ・履歴を見る" closeLabel="とじる">
+                {result.axes.length > 0 && <RadarChart axes={result.axes} />}
+                {result.clutch && (
+                  <div className="spread small">
+                    <span className="muted">クラッチ(9点〜)</span>
+                    <span className="mono" style={{ color: result.clutch.diff >= 0 ? 'var(--pos)' : 'var(--neg)', fontWeight: 700 }}>
+                      {fmtDiff(result.clutch.diff, result.clutch.pt, result.clutch.ci)}
+                    </span>
+                  </div>
+                )}
+                {gap && (
+                  <p className="small">
+                    <span className="muted">自己申告ギャップ: </span>{gap.text}
+                    <span className="mono muted">(自己評価 {gap.selfRating}/5)</span>
+                  </p>
+                )}
+                {karte.typeHistory.length > 0 && (
+                  <div>
+                    <p className="small muted" style={{ marginBottom: 6 }}>タイプ遷移</p>
+                    <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+                      {karte.typeHistory.map((h, i) => (
+                        <span key={`${h.date}-${i}`} className="row" style={{ gap: 6 }}>
+                          {i > 0 && <span aria-hidden="true" className="arrow-flow" style={{ color: 'var(--accent)', fontWeight: 700 }}>→</span>}
+                          <span
+                            className="pop-in"
+                            style={{
+                              animationDelay: `${i * 0.12}s`,
+                              display: 'inline-flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.25,
+                              border: `1px solid ${h.stage === 'measured' ? 'var(--pos)' : 'var(--warn)'}`,
+                              borderRadius: 'var(--radius-sm)', padding: '3px 9px',
+                            }}
+                          >
+                            <span className="mono small" style={{ fontWeight: 700, color: typeColor(h.codename) }}>
+                              {h.codename}-{h.variant === 'alpha' ? 'α' : 'Ω'}
+                            </span>
+                            <span className="mono" style={{ fontSize: 10, color: h.stage === 'measured' ? 'var(--pos)' : 'var(--warn)' }}>
+                              {h.date}・{h.stage === 'measured' ? '実測' : '仮'}
+                            </span>
+                          </span>
+                        </span>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
+                )}
+              </Collapsible>
             )}
           </div>
         )}
       </Card>
 
+      {/* 弱点と傾向(確定タグ・観察中・解消済み) */}
+      <Collapsible
+        title="弱点と傾向"
+        openLabel="弱点と傾向を見る"
+        closeLabel="とじる"
+        summary={
+          <span>
+            確定 <span className="mono" style={{ color: 'var(--accent)', fontWeight: 700 }}>{confirmed.length}</span>
+            ・観察中 <span className="mono" style={{ color: 'var(--warn)', fontWeight: 700 }}>{observed.length}</span>
+            ・解消 <span className="mono" style={{ color: 'var(--pos)', fontWeight: 700 }}>{resolved.length}</span>
+          </span>
+        }
+      >
+        {/* 確定タグ(断定可) */}
+        <Card accent>
+          <SectionLabel>確定タグ</SectionLabel>
+          {confirmed.length === 0 ? (
+            <p className="muted small">確定タグはまだありません。10pt以上+3試合連続で観測されると、承認を経てここに確定します。</p>
+          ) : (
+            <div className="stack">
+              {confirmed.map((t) => (
+                <div key={t.id} style={{ borderLeft: '3px solid var(--accent)', paddingLeft: 10 }}>
+                  <p>{t.text}</p>
+                  <p className="small muted mono">{tendencyValue(t)} ・ {t.firstSeen} 〜 {t.lastSeen}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* 観察中(「可能性」表現・削除可) */}
+        <Card>
+          <SectionLabel>観察中</SectionLabel>
+          {observed.length === 0 ? (
+            <p className="muted small">観察中の項目はありません。</p>
+          ) : (
+            <div className="stack">
+              {observed.map((t) => (
+                <div key={t.id} className="spread">
+                  <div>
+                    <p className="muted">{t.text} の可能性</p>
+                    <p className="small muted mono">{tendencyValue(t)} ・ 初観測 {t.firstSeen}</p>
+                  </div>
+                  {!simple && <button className="btn btn-ghost" onClick={() => removeObserved(t)}>削除</button>}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="small muted" style={{ marginTop: 8 }}>昇格はホームの「要確認」で承認します。</p>
+        </Card>
+
+        {/* 解消済み */}
+        <Card>
+          <SectionLabel>解消済み</SectionLabel>
+          {resolved.length === 0 ? (
+            <p className="muted small">解消済みの項目はまだありません。確定タグが直近2試合で観測されなくなると候補になります。</p>
+          ) : (
+            <div className="stack">
+              {resolved.map((t) => (
+                <div key={t.id}>
+                  <p className="row" style={{ flexWrap: 'wrap' }}>
+                    <span
+                      className="small"
+                      style={{ background: 'var(--accent-faint)', color: 'var(--accent)', borderRadius: 4, padding: '0 6px' }}
+                    >
+                      解消
+                    </span>
+                    <span>{t.text}</span>
+                  </p>
+                  <p className="small muted mono">
+                    {tendencyValue(t)}{t.resolvedAt ? ` ・ 解消 ${t.resolvedAt}` : ''}
+                  </p>
+                  {t.resolvedBy && (
+                    <p className="small"><span className="muted">効いた練習: </span>{t.resolvedBy}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </Collapsible>
+
+      {/* 練習と崩壊ループ */}
+      <Collapsible
+        title="練習と崩壊ループ"
+        openLabel="練習の課題・崩壊ループを見る"
+        closeLabel="とじる"
+        summary={
+          <span>
+            検証待ちの課題 <span className="mono">{waiting.length}</span>件
+            ・崩壊ループ <span className="mono">{karte.loops.length}</span>件
+          </span>
+        }
+      >
+        {/* 直近の課題と練習履歴 */}
+        <Card>
+          <SectionLabel>直近の課題と練習履歴</SectionLabel>
+          {waiting.length === 0 && verified.length === 0 ? (
+            <p className="muted small">課題はまだありません。試合後モードで「次の練習で1つだけやること」を追加できます。</p>
+          ) : (
+            <div className="stack">
+              {waiting.length > 0 && (
+                <div className="stack">
+                  <p className="small muted">検証待ち</p>
+                  {waiting.map((a) => (
+                    <AssignmentRow key={a.id} id={a.id} date={a.date} menu={a.menu} />
+                  ))}
+                </div>
+              )}
+              {verified.length > 0 && (
+                <div className="stack" style={{ gap: 6 }}>
+                  <p className="small muted">検証済み</p>
+                  {verified.map((a) => (
+                    <div key={a.id}>
+                      <p>{a.menu}</p>
+                      <p className="small muted">
+                        <span className="mono">{a.date}</span>
+                        {a.outcome ? ` ・ 結果: ${a.outcome}` : ''}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* 崩壊ループ */}
+        <Card>
+          <SectionLabel>崩壊ループ</SectionLabel>
+          {karte.loops.length === 0 ? (
+            <p className="muted small">記録された崩壊ループはありません。気づいたパターンがあれば手動で追加できます。</p>
+          ) : (
+            <div className="stack" style={{ gap: 16 }}>
+              {karte.loops.map((l, i) => <LoopCard key={l.id} loop={l} index={i} />)}
+            </div>
+          )}
+          {!simple && (
+            <div style={{ marginTop: 12 }}>
+              {showLoopForm ? (
+                <LoopForm onClose={() => setShowLoopForm(false)} />
+              ) : (
+                <button className="btn" onClick={() => setShowLoopForm(true)}>崩壊ループを追加</button>
+              )}
+            </div>
+          )}
+        </Card>
+      </Collapsible>
+
+      {/* ここから下はくわしい記録(基本情報・成績・ログ・メモ) */}
+      <Collapsible title="カルテの記録" defaultOpen={false} openLabel="基本情報・成績・ログをくわしく見る" closeLabel="とじる">
+      {/* 基本(診断より) — 診断済みのときだけ */}
+      {diagnosis && (
+      <Card>
+        <SectionLabel>基本(診断より)</SectionLabel>
+        <div className="stack" style={{ gap: 4 }}>
+          <div className="spread"><span className="muted small">戦型</span><span>{diagnosis.style}</span></div>
+          <div className="spread"><span className="muted small">利き手・グリップ</span><span>{diagnosis.grip}</span></div>
+          <div className="spread">
+            <span className="muted small">競り合いの自己評価</span>
+            <span className="mono">{diagnosis.selfRating}/5</span>
+          </div>
+          <div className="spread">
+            <span className="muted small">診断日</span>
+            <span className="mono small">{diagnosis.answeredAt.slice(0, 10)}</span>
+          </div>
+        </div>
+      </Card>
+      )}
+
       {/* サーブ別成績(上級) */}
       {!simple && (
       <Card>
-        <SectionLabel>サーブ別成績(直近5試合)</SectionLabel>
-        {serves.length === 0 ? (
-          <p className="muted small">承認済み試合のデータがまだありません。試合を取り込んで承認すると集計されます。</p>
-        ) : (
-          <table className="data">
-            <thead>
-              <tr><th>サーブ</th><th>主コース</th><th>得点率</th></tr>
-            </thead>
-            <tbody>
-              {serves.map((s) => (
-                <tr key={s.serveType}>
-                  <td>{s.serveType}</td>
-                  <td><span className="row"><CourseBadge course={s.mainCourse} />{COURSE_LABELS[s.mainCourse]}</span></td>
-                  <td className="mono">{fmtRate(s.winRate, s.count, s.ci)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <SectionLabel>サーブ別の得点率(直近5試合)</SectionLabel>
+        <StatBars
+          items={serves.map((s) => ({ label: s.serveType, value: s.winRate, count: s.count, sub: `→${COURSE_LABELS[s.mainCourse]}` }))}
+          emptyLabel="承認済み試合のデータがまだありません。試合を取り込んで承認すると集計されます。"
+        />
       </Card>
       )}
 
       {/* コース別失点傾向(上級) */}
       {!simple && (
       <Card>
-        <SectionLabel>コース別失点傾向(レシーブ・直近5試合)</SectionLabel>
+        <SectionLabel>コース別の失点(レシーブ・直近5試合)</SectionLabel>
         {losses.length === 0 ? (
           <p className="muted small">レシーブのデータがまだありません。</p>
         ) : (
-          <div className="stack" style={{ gap: 6 }}>
-            {losses.map((l) => (
-              <div key={l.course} className="spread">
-                <span className="row"><CourseBadge course={l.course} />{l.label}</span>
-                <span className="mono small">{fmtRate(l.lossRate, l.count, l.ci)}</span>
-              </div>
-            ))}
-          </div>
+          <CourtHeatmap cells={losses.map((l) => ({ course: l.course, rate: l.lossRate, count: l.count }))} kind="loss" />
         )}
       </Card>
       )}
 
-      {/* 確定タグ(断定可) */}
-      <Card accent>
-        <SectionLabel>確定タグ</SectionLabel>
-        {confirmed.length === 0 ? (
-          <p className="muted small">確定タグはまだありません。10pt以上+3試合連続で観測されると、承認を経てここに確定します。</p>
-        ) : (
-          <div className="stack">
-            {confirmed.map((t) => (
-              <div key={t.id} style={{ borderLeft: '3px solid var(--accent)', paddingLeft: 10 }}>
-                <p>{t.text}</p>
-                <p className="small muted mono">{tendencyValue(t)} ・ {t.firstSeen} 〜 {t.lastSeen}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* 観察中(「可能性」表現・削除可) */}
-      <Card>
-        <SectionLabel>観察中</SectionLabel>
-        <p className="small muted" style={{ marginBottom: 8 }}>
-          まだ断定しません。データが揃うと確定タグの提案(要確認)になります。
-        </p>
-        {observed.length === 0 ? (
-          <p className="muted small">観察中の項目はありません。</p>
-        ) : (
-          <div className="stack">
-            {observed.map((t) => (
-              <div key={t.id} className="spread">
-                <div>
-                  <p className="muted">{t.text} の可能性</p>
-                  <p className="small muted mono">{tendencyValue(t)} ・ 初観測 {t.firstSeen}</p>
-                </div>
-                {!simple && <button className="btn btn-ghost" onClick={() => removeObserved(t)}>削除</button>}
-              </div>
-            ))}
-          </div>
-        )}
-        <p className="small muted" style={{ marginTop: 8 }}>
-          確定への昇格は自動では行われません。提案が届いたらホームの「要確認」で承認してください。
-        </p>
-      </Card>
-
-      {/* 解消済み */}
-      <Card>
-        <SectionLabel>解消済み</SectionLabel>
-        {resolved.length === 0 ? (
-          <p className="muted small">解消済みの項目はまだありません。確定タグが直近2試合で観測されなくなると候補になります。</p>
-        ) : (
-          <div className="stack">
-            {resolved.map((t) => (
-              <div key={t.id}>
-                <p className="row" style={{ flexWrap: 'wrap' }}>
-                  <span
-                    className="small"
-                    style={{ background: 'var(--accent-faint)', color: 'var(--accent)', borderRadius: 4, padding: '0 6px' }}
-                  >
-                    解消
-                  </span>
-                  <span>{t.text}</span>
-                </p>
-                <p className="small muted mono">
-                  {tendencyValue(t)}{t.resolvedAt ? ` ・ 解消 ${t.resolvedAt}` : ''}
-                </p>
-                {t.resolvedBy && (
-                  <p className="small"><span className="muted">効いた練習: </span>{t.resolvedBy}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* 崩壊ループ */}
-      <Card>
-        <SectionLabel>崩壊ループ</SectionLabel>
-        {karte.loops.length === 0 ? (
-          <p className="muted small">記録された崩壊ループはありません。気づいたパターンがあれば手動で追加できます。</p>
-        ) : (
-          <div className="stack" style={{ gap: 16 }}>
-            {karte.loops.map((l, i) => <LoopCard key={l.id} loop={l} index={i} />)}
-          </div>
-        )}
-        {!simple && (
-          <div style={{ marginTop: 12 }}>
-            {showLoopForm ? (
-              <LoopForm onClose={() => setShowLoopForm(false)} />
-            ) : (
-              <button className="btn" onClick={() => setShowLoopForm(true)}>崩壊ループを追加</button>
-            )}
-          </div>
-        )}
-      </Card>
-
-      {/* 直近の課題と練習履歴 */}
-      <Card>
-        <SectionLabel>直近の課題と練習履歴</SectionLabel>
-        {waiting.length === 0 && verified.length === 0 ? (
-          <p className="muted small">課題はまだありません。試合後モードで「次の練習で1つだけやること」を追加できます。</p>
-        ) : (
-          <div className="stack">
-            {waiting.length > 0 && (
-              <div className="stack">
-                <p className="small muted">検証待ち</p>
-                {waiting.map((a) => (
-                  <AssignmentRow key={a.id} id={a.id} date={a.date} menu={a.menu} />
-                ))}
-              </div>
-            )}
-            {verified.length > 0 && (
-              <div className="stack" style={{ gap: 6 }}>
-                <p className="small muted">検証済み</p>
-                {verified.map((a) => (
-                  <div key={a.id}>
-                    <p>{a.menu}</p>
-                    <p className="small muted">
-                      <span className="mono">{a.date}</span>
-                      {a.outcome ? ` ・ 結果: ${a.outcome}` : ''}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </Card>
-
       {/* 練習ログ(上級) */}
       {!simple && (
       <Card>
-        <SectionLabel>練習ログ</SectionLabel>
-        <p className="small muted" style={{ marginBottom: 8 }}>※練習ログはタイプ計算には使いません。</p>
+        <SectionLabel>練習ログ — 成功率の推移</SectionLabel>
         {karte.practiceLog.length === 0 ? (
           <p className="muted small">練習ログはまだありません。</p>
         ) : (
+          <>
+            {(() => {
+              const asc = [...karte.practiceLog].sort((a, b) => (a.date < b.date ? -1 : 1));
+              const latest = asc[asc.length - 1];
+              return (
+                <div className="row" style={{ gap: 12, marginBottom: 10, alignItems: 'center' }}>
+                  <Sparkline values={asc.map((p) => p.successRate * 100)} color="var(--pos)" width={180} height={40} />
+                  <span className="mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--pos)' }}>
+                    {Math.round(latest.successRate * 100)}%
+                  </span>
+                </div>
+              );
+            })()}
           <table className="data">
             <thead>
               <tr><th>日付</th><th>ドリル</th><th>成功率</th></tr>
@@ -516,6 +543,7 @@ export default function KarteScreen() {
                 ))}
             </tbody>
           </table>
+          </>
         )}
       </Card>
       )}
@@ -568,6 +596,7 @@ export default function KarteScreen() {
         )}
       </Card>
       )}
+      </Collapsible>
 
       {simple && (
         <p className="small muted" style={{ textAlign: 'center' }}>
@@ -576,9 +605,7 @@ export default function KarteScreen() {
         </p>
       )}
 
-      <p className="small muted" style={{ textAlign: 'center' }}>
-        カルテは本人のみに表示されます。共有・エクスポート機能はありません。
-      </p>
+      <p className="small muted" style={{ textAlign: 'center' }}>🔒 本人のみ表示・共有なし</p>
     </Screen>
   );
 }
