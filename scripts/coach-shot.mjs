@@ -4,7 +4,8 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { mkdirSync } from 'node:fs';
 
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const BASE = 'http://localhost:4173';
+const arg = process.argv[2] ?? '4173';
+const BASE = arg.startsWith('http') ? arg : `http://localhost:${arg}`;
 const OUT = 'C:/Users/shotaro.nagano/nagano-project/AiCoach/.shot/coach';
 mkdirSync(OUT, { recursive: true });
 

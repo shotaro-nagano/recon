@@ -37,6 +37,10 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: 'index.html',
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // 新ビルドを即時反映(旧Service Workerの待機を避ける)＋古いキャッシュを破棄
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
