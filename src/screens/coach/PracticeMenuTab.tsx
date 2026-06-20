@@ -32,18 +32,21 @@ function PriorityPill({ n }: { n: number }) {
 
 export default function PracticeMenuTab() {
   const recordPracticeFocus = useAppStore((s) => s.recordPracticeFocus);
-  const [focus, setFocus] = useState<PracticeFocus | null>(null);
+  // 既定で弱点メニューを表示(「メニューを出すだけ」= 入力不要)。選択で切替＋裏DB記録。
+  const [focus, setFocus] = useState<PracticeFocus>('weak');
+  const [recorded, setRecorded] = useState(false);
 
-  const menu = useMemo(() => (focus ? buildPracticeMenu(focus) : []), [focus]);
+  const menu = useMemo(() => buildPracticeMenu(focus), [focus]);
 
   const choose = (f: PracticeFocus) => {
     setFocus(f);
     recordPracticeFocus(f); // 裏DBに記録(設定 > 練習フォーカスの記録 で確認可)
+    setRecorded(true);
   };
 
   return (
     <div className="stack">
-      {/* フォーカス選択(入力はこれだけ) */}
+      {/* フォーカス選択(操作はこれだけ・タップで記録) */}
       <Card accent>
         <SectionLabel>今日はどっちを鍛える?</SectionLabel>
         <div className="row" style={{ gap: 10 }}>
@@ -68,16 +71,12 @@ export default function PracticeMenuTab() {
             );
           })}
         </div>
+        <p className="small muted" style={{ marginTop: 8 }}>
+          {recorded
+            ? <span style={{ color: 'var(--pos)', fontWeight: 700 }}>✓ 「{FOCUS_LABEL[focus]}」で記録しました</span>
+            : 'タップすると選択が記録され、メニューが切り替わります(入力はこれだけ)。'}
+        </p>
       </Card>
-
-      {focus == null && (
-        <Card>
-          <p className="small muted">
-            上で<b>強み</b>か<b>弱点</b>を選ぶと、優先順位つきの練習メニューが出ます。入力はこれだけ。
-            選んだ内容は記録に残り、あとで振り返れます。
-          </p>
-        </Card>
-      )}
 
       {/* 優先度付きメニュー */}
       {menu.map((sec) => (
