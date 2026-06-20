@@ -176,16 +176,16 @@ function OpponentTactics() {
 }
 
 /* ---- B. 汎用戦術カード(カードデッキ・タップで理由が開く) ---- */
-const TACTIC_CAT_STYLE: Record<TacticCategory, { color: string; icon: string }> = {
-  '序盤・流れ': { color: '#0EA5E9', icon: '🚀' },
-  'サーブ': { color: '#8B5CF6', icon: '🏓' },
-  'レシーブ': { color: 'var(--accent)', icon: '🛡️' },
-  '配球・戦術': { color: '#10B981', icon: '🎯' },
-  '競り合い・終盤': { color: 'var(--neg)', icon: '🔥' },
-  '守備・粘り': { color: '#F59E0B', icon: '🧱' },
-  'メンタル・所作': { color: '#EC4899', icon: '🧠' },
-  'フォーム・身体': { color: '#6366F1', icon: '⚙️' },
-  'ベンチワーク': { color: '#64748B', icon: '⏱️' },
+const TACTIC_CAT_COLOR: Record<TacticCategory, string> = {
+  '序盤・流れ': '#38BDF8',
+  'サーブ': '#A78BFA',
+  'レシーブ': '#35E6C5',
+  '配球・戦術': '#34D399',
+  '競り合い・終盤': '#FB7185',
+  '守備・粘り': '#FBBF24',
+  'メンタル・所作': '#F472B6',
+  'フォーム・身体': '#818CF8',
+  'ベンチワーク': '#94A3B8',
 };
 
 function GeneralTactics() {
@@ -242,7 +242,7 @@ function GeneralTactics() {
       {/* カードデッキ */}
       <div className="tactic-deck">
         {cards.map((t) => {
-          const st = TACTIC_CAT_STYLE[t.cat];
+          const color = TACTIC_CAT_COLOR[t.cat];
           const isOpen = open.has(t.id);
           const no = t.id.replace(/\D/g, '').padStart(2, '0');
           return (
@@ -250,12 +250,15 @@ function GeneralTactics() {
               key={t.id}
               type="button"
               className={`tactic-card${isOpen ? ' open' : ''}`}
-              style={{ ['--cat' as string]: st.color } as React.CSSProperties}
+              style={{ ['--cat' as string]: color } as React.CSSProperties}
               aria-expanded={isOpen}
               onClick={() => toggle(t.id)}
             >
               <span className="tactic-card-no">{no}</span>
-              <span className="tactic-card-cat">{st.icon} {t.cat}</span>
+              <span className="tactic-card-cat">
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }} />
+                {t.cat}
+              </span>
               <span className="tactic-card-title">{t.title}</span>
               {isOpen && <span className="tactic-card-reason fade-in">{t.reason}</span>}
               <span className="tactic-card-hint">{isOpen ? '▴ とじる' : '▾ 理由を見る'}</span>

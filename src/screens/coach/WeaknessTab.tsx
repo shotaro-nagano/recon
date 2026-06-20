@@ -15,10 +15,10 @@ import { FlowSteps } from '@/components/charts';
 
 const TAG_COLOR: Record<WeaknessTag, string> = {
   レシーブ: 'var(--accent)',
-  台上: '#0ea5e9',
-  サーブ: '#8b5cf6',
+  台上: '#38BDF8',
+  サーブ: '#A78BFA',
   ラリー: 'var(--warn)',
-  フットワーク: '#10b981',
+  フットワーク: '#34D399',
   イレギュラー: 'var(--line-dim)',
 };
 
@@ -53,7 +53,7 @@ function PatternCard({ w, featured = false }: { w: WeaknessPattern; featured?: b
 
       {/* 失点局面 */}
       <div
-        className="row"
+        className="row miss-box"
         style={{
           gap: 8, marginTop: 8, padding: '8px 10px', borderRadius: 'var(--radius-sm)',
           background: 'var(--neg-soft)', border: '1px solid var(--neg)',
