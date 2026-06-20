@@ -1,78 +1,77 @@
 /* ============================================================
-   コーチ画面 — ダーク・タクティカル(RECON世界観)
+   コーチ画面 — ダーク・タクティカル(可読性最優先版)
    /coach のときだけ .app-main に .app-main--dark が付く。
-   トークン(CSS変数)をこのスコープで上書きし、各UIをネオン/グロー化。
+   方針: ダークは維持しつつ「みやすさ」を最優先。
+   - 背景の格子は廃止(本文の邪魔)。淡い上部グローのみ。
+   - 本文は高コントラスト＋やや大きめ＋行間広め。
+   - カード面は背景よりはっきり明るく、境界を明確に。
+   - グロー/発光は要所だけ(文字の上には乗せない)。
    ============================================================ */
 .app-main--dark {
-  /* ---- ダークトークン上書き ---- */
-  --night-court: #0A0F1A;
-  --deep-court: #141E33;          /* カード面 */
-  --court-line: #E9EFFA;          /* 主要テキスト */
-  --line-dim: #9DB0CC;            /* 補助テキスト */
-  --accent: #35E6C5;              /* ネオン・タクティカル */
-  --accent-soft: rgba(53, 230, 197, 0.34);
-  --accent-faint: rgba(53, 230, 197, 0.10);
-  --accent-contrast: #03131C;
-  --pos: #34D399;
-  --pos-soft: rgba(52, 211, 153, 0.16);
-  --neg: #FB7185;
-  --neg-soft: rgba(251, 113, 133, 0.16);
-  --warn: #FBBF24;
-  --grid: rgba(157, 176, 204, 0.16);
-  --divider: rgba(157, 176, 204, 0.14);
-  --divider-strong: rgba(157, 176, 204, 0.26);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45), 0 8px 22px rgba(0, 0, 0, 0.38);
-  --shadow-pop: 0 14px 34px rgba(0, 0, 0, 0.55);
+  /* ---- ダークトークン(高コントラスト) ---- */
+  --night-court: #0E1626;          /* ページ背景 */
+  --deep-court: #1C2942;           /* カード面(背景よりはっきり明るい) */
+  --court-line: #EDF3FC;           /* 主要テキスト(ほぼ白・最大可読) */
+  --line-dim: #B7C5DA;             /* 補助テキスト(明るめ=読める) */
+  --accent: #41E8CA;               /* ネオン・タクティカル */
+  --accent-soft: rgba(65, 232, 202, 0.42);
+  --accent-faint: rgba(65, 232, 202, 0.13);
+  --accent-contrast: #04141C;
+  --pos: #41DD9B;
+  --pos-soft: rgba(65, 221, 155, 0.16);
+  --neg: #FF7E8D;
+  --neg-soft: rgba(255, 126, 141, 0.16);
+  --warn: #FBC24C;
+  --grid: rgba(183, 197, 218, 0.10);
+  --divider: rgba(183, 197, 218, 0.18);
+  --divider-strong: rgba(183, 197, 218, 0.32);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 16px rgba(0, 0, 0, 0.26);
+  --shadow-pop: 0 12px 30px rgba(0, 0, 0, 0.5);
 
   color: var(--court-line);
-  background-color: #0A0F1A;
-  background-image:
-    radial-gradient(1000px 380px at 50% -10%, rgba(53, 230, 197, 0.10), transparent 70%),
-    radial-gradient(700px 300px at 100% 0%, rgba(91, 141, 239, 0.08), transparent 70%),
-    linear-gradient(var(--grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: auto, auto, 34px 34px, 34px 34px;
-  background-attachment: fixed, fixed, fixed, fixed;
+  background-color: var(--night-court);
+  background-image: radial-gradient(1100px 440px at 50% -16%, rgba(65, 232, 202, 0.06), transparent 72%);
+  background-repeat: no-repeat;
 }
+
+/* ---- 本文の可読性(やや大きく・行間広く・明るく) ---- */
+.app-main--dark .small { font-size: 13.5px; line-height: 1.62; }
+.app-main--dark p { line-height: 1.62; }
+.app-main--dark .muted { color: var(--line-dim); }
 
 /* ---- 見出し ---- */
-.app-main--dark .screen-title {
-  color: var(--court-line);
-  text-shadow: 0 0 20px rgba(53, 230, 197, 0.18);
-}
+.app-main--dark .screen-title { color: var(--court-line); }
 .app-main--dark .screen-title::before {
   content: '';
   display: inline-block;
-  width: 4px; height: 0.95em;
+  width: 4px; height: 0.9em;
   margin-right: 10px;
   vertical-align: -1px;
   background: var(--accent);
-  box-shadow: 0 0 10px var(--accent-soft);
   border-radius: 2px;
 }
 .coach-hud-tag {
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   color: var(--accent);
   border: 1px solid var(--accent-soft);
   border-radius: var(--radius-pill);
   padding: 3px 10px;
   white-space: nowrap;
-  box-shadow: inset 0 0 12px rgba(53, 230, 197, 0.08);
 }
 
-/* ---- カード ---- */
+/* ---- カード(背景よりはっきり明るく・境界を明確に) ---- */
 .app-main--dark .card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 40%), var(--deep-court);
-  border: 1px solid var(--divider);
+  background: var(--deep-court);
+  border: 1px solid var(--divider-strong);
   box-shadow: var(--shadow-card);
 }
-.app-main--dark .section-label { color: var(--accent); opacity: 0.92; }
+.app-main--dark .section-label { color: var(--accent); }
 
 /* ---- ボタン ---- */
 .app-main--dark .btn {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--divider-strong);
   color: var(--court-line);
 }
@@ -81,31 +80,26 @@
   background: var(--accent);
   color: var(--accent-contrast);
   border-color: transparent;
-  box-shadow: 0 0 18px rgba(53, 230, 197, 0.35);
+  font-weight: 700;
 }
-.app-main--dark .btn-primary:disabled { box-shadow: none; opacity: 0.5; }
+.app-main--dark .btn-primary:disabled { opacity: 0.5; }
 .app-main--dark .btn-ghost { background: transparent; border-color: transparent; color: var(--line-dim); }
 .app-main--dark .btn-ghost:hover { color: var(--accent); }
 
-/* ---- 今のおすすめ(タクティカル・ヒーロー) ---- */
+/* ---- 今のおすすめ(ネオン・ヒーロー / 文字の上にグローを乗せない) ---- */
 .coach-hero {
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(420px 180px at 0% 0%, rgba(53, 230, 197, 0.16), transparent 70%),
-    linear-gradient(180deg, rgba(53, 230, 197, 0.05), transparent 50%),
-    var(--deep-court) !important;
+  background: linear-gradient(180deg, rgba(65, 232, 202, 0.07), transparent 55%), var(--deep-court) !important;
   border: 1px solid var(--accent-soft) !important;
-  box-shadow: 0 0 0 1px rgba(53, 230, 197, 0.05), 0 10px 30px rgba(0, 0, 0, 0.4),
-    inset 0 0 40px rgba(53, 230, 197, 0.05) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
 }
-/* コーナーブラケット(◤◢) */
 .coach-hero::before, .coach-hero::after {
   content: '';
   position: absolute;
-  width: 14px; height: 14px;
+  width: 13px; height: 13px;
   border: 2px solid var(--accent);
-  opacity: 0.8;
+  opacity: 0.75;
 }
 .coach-hero::before { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
 .coach-hero::after { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
@@ -116,7 +110,7 @@
   letter-spacing: 0.12em;
   color: var(--accent);
   text-transform: uppercase;
-  margin-bottom: 1px;
+  margin-bottom: 2px;
 }
 .coach-hero-icon {
   display: grid; place-items: center;
@@ -125,16 +119,14 @@
   color: var(--accent);
   border: 1px solid var(--accent-soft);
   border-radius: var(--radius-sm);
-  background: rgba(53, 230, 197, 0.08);
-  box-shadow: inset 0 0 16px rgba(53, 230, 197, 0.12), 0 0 14px rgba(53, 230, 197, 0.10);
+  background: rgba(65, 232, 202, 0.10);
 }
 
-/* ---- 画面下3タブ(ダーク・ネオン) ---- */
+/* ---- 画面下3タブ(ダーク・ネオンだが文字はくっきり) ---- */
 .app-main--dark .coach-tabs {
-  background: rgba(14, 21, 38, 0.92);
+  background: #16223A;
   border: 1px solid var(--divider-strong);
-  box-shadow: 0 -2px 0 rgba(53, 230, 197, 0.06), 0 12px 30px rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
 }
 .app-main--dark .coach-tab { color: var(--line-dim); }
 .app-main--dark .coach-tab:hover { color: var(--court-line); }
@@ -142,90 +134,73 @@
   background: var(--accent-faint);
   color: var(--accent);
   border-color: var(--accent-soft);
-  box-shadow: inset 0 0 18px rgba(53, 230, 197, 0.10);
 }
 .app-main--dark .coach-tab.active::before {
   content: '';
   position: absolute;
-  top: -1px; left: 18%; right: 18%; height: 2px;
+  top: -1px; left: 20%; right: 20%; height: 2px;
   background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
   border-radius: 2px;
 }
 .coach-tab-ico { display: grid; place-items: center; }
+.app-main--dark .coach-tab-label { font-size: 11.5px; }
 .app-main--dark .coach-tab-reco {
   background: var(--accent);
   color: var(--accent-contrast);
-  box-shadow: 0 0 12px rgba(53, 230, 197, 0.6);
 }
 
 /* ---- 練習: フォーカス選択 ---- */
 .app-main--dark .focus-card {
-  background: rgba(255, 255, 255, 0.025) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid var(--divider-strong) !important;
 }
 .app-main--dark .focus-card[aria-pressed='true'] {
   border-color: var(--accent) !important;
   background: var(--accent-faint) !important;
-  box-shadow: inset 0 0 22px rgba(53, 230, 197, 0.10), 0 0 16px rgba(53, 230, 197, 0.12) !important;
 }
 .focus-ico { color: var(--accent); }
 
-/* 練習カテゴリの番号バッジ・アイコン */
+/* 練習カテゴリのアイコン・コード */
 .cat-badge {
   display: inline-grid; place-items: center;
   width: 34px; height: 34px; flex-shrink: 0;
   border-radius: var(--radius-sm);
   color: var(--accent);
   border: 1px solid var(--accent-soft);
-  background: rgba(53, 230, 197, 0.07);
+  background: rgba(65, 232, 202, 0.08);
 }
 .cat-code {
+  display: block;
   font-family: var(--font-mono);
-  font-size: 10px; letter-spacing: 0.12em;
+  font-size: 10px; letter-spacing: 0.1em;
   color: var(--line-dim);
 }
 
-/* ---- 戦術カードデッキ(ダーク) ---- */
+/* ---- 戦術カードデッキ(ダーク・くっきり) ---- */
 .app-main--dark .tactic-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 45%), var(--deep-court);
+  background: var(--deep-court);
   border-color: var(--divider-strong);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-card);
 }
-.app-main--dark .tactic-card:hover { box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5); }
+.app-main--dark .tactic-card:hover { box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45); }
 .app-main--dark .tactic-card.open {
   border-color: var(--cat, var(--accent));
-  box-shadow: 0 0 0 1px var(--cat, var(--accent)), 0 12px 30px rgba(0, 0, 0, 0.55),
-    inset 0 0 30px color-mix(in srgb, var(--cat, var(--accent)) 10%, transparent);
+  box-shadow: 0 0 0 1px var(--cat, var(--accent)), 0 10px 26px rgba(0, 0, 0, 0.5);
 }
-.app-main--dark .tactic-card-no { opacity: 0.28; }
-.app-main--dark .tactic-card-reason { border-top-color: var(--divider-strong); }
+.app-main--dark .tactic-card-no { opacity: 0.22; }
+.app-main--dark .tactic-card-reason {
+  border-top-color: var(--divider-strong);
+  color: var(--line-dim);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
 
-/* ---- 弱点: シーケンスの ✗失点 枠 ---- */
+/* ---- 弱点: ✗失点 枠 ---- */
 .app-main--dark .miss-box {
   background: var(--neg-soft);
   border: 1px solid var(--neg);
-  box-shadow: 0 0 16px rgba(251, 113, 133, 0.14);
-}
-
-/* ---- チップ(横スクロール) ---- */
-.app-main--dark .chip {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--divider-strong);
-  color: var(--line-dim);
-}
-.app-main--dark .chip.active {
-  border-color: var(--accent);
-  background: var(--accent-faint);
-  color: var(--accent);
-  box-shadow: inset 0 0 14px rgba(53, 230, 197, 0.10);
 }
 
 /* hr */
 .app-main--dark .divider { border-top-color: var(--divider); }
 .app-main--dark .divider-strong { border-top-color: var(--divider-strong); }
-
-/* アニメ無効(タクティカルカード)時もダークは維持 */
-@media (prefers-reduced-motion: reduce) {
-  .app-main--dark { background-attachment: scroll, scroll, scroll, scroll; }
-}
