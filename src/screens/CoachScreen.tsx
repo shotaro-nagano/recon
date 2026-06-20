@@ -38,13 +38,17 @@ export default function CoachScreen() {
 
   return (
     <Screen title="コーチ" right={<span className="coach-hud-tag">RECON · TACTICAL</span>}>
-      {/* 今のおすすめ(ネオン・ヒーロー) */}
+      {/* 今のおすすめ(タクティカル・ヒーロー / accentは点だけ・発光なし) */}
       <section className="card coach-hero accent-fade">
+        <span className="coach-tick tl" aria-hidden="true" />
+        <span className="coach-tick br" aria-hidden="true" />
         <div className="row" style={{ gap: 14, alignItems: 'center' }}>
           <span className="coach-hero-icon"><RecoIcon size={24} /></span>
           <div style={{ minWidth: 0 }}>
             <span className="coach-eyebrow">▸ 今のおすすめ / RECOMMENDED</span>
-            <p className="display" style={{ fontSize: 19, color: 'var(--accent)', marginTop: 2 }}>{recoLabel}</p>
+            <div className="coach-hero-name">
+              <p className="display" style={{ fontSize: 20, color: 'var(--court-line)' }}>{recoLabel}</p>
+            </div>
             <p className="small muted" style={{ marginTop: 3 }}>{recoReason}</p>
           </div>
         </div>

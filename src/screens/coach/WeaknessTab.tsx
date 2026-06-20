@@ -11,7 +11,6 @@ import {
 import type { WeaknessPattern, WeaknessTag } from '@/domain/coach/weaknesses';
 import { DRILL_CATEGORY_MAP } from '@/domain/coach/drills';
 import { Card, SectionLabel } from '@/components/ui';
-import { FlowSteps } from '@/components/charts';
 
 const TAG_COLOR: Record<WeaknessTag, string> = {
   レシーブ: 'var(--accent)',
@@ -46,9 +45,14 @@ function PatternCard({ w, featured = false }: { w: WeaknessPattern; featured?: b
         <TagPill tag={w.tag} />
       </div>
 
-      {/* 状況 → 経過 のシーケンス */}
-      <div style={{ marginTop: 10 }}>
-        <FlowSteps steps={w.steps.map((s) => ({ title: s }))} color="var(--warn)" />
+      {/* 状況 → 経過 のシーケンス(縦タイムライン) */}
+      <div className="seq" style={{ marginTop: 12 }}>
+        {w.steps.map((s, i) => (
+          <div className="seq-row" key={i}>
+            <span className="seq-no">{i + 1}</span>
+            <span className="seq-step">{s}</span>
+          </div>
+        ))}
       </div>
 
       {/* 失点局面 */}
@@ -63,10 +67,13 @@ function PatternCard({ w, featured = false }: { w: WeaknessPattern; featured?: b
         <span className="small" style={{ color: 'var(--neg)' }}>{w.missPoint}</span>
       </div>
 
-      {/* 効く練習 */}
-      <p className="small muted" style={{ marginTop: 8 }}>
-        効く練習: <b style={{ color: 'var(--court-line)' }}>{drill.label}</b> — {drill.aim}
-      </p>
+      {/* 効く練習(練習タブへの動線チップ) */}
+      <div style={{ marginTop: 10 }}>
+        <span className="fix-chip">
+          <span className="label">効く練習: {drill.label}</span>
+          <span className="muted small">— {drill.aim}</span>
+        </span>
+      </div>
     </Card>
   );
 }

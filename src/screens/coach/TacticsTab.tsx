@@ -256,7 +256,7 @@ function GeneralTactics() {
             >
               <span className="tactic-card-no">{no}</span>
               <span className="tactic-card-cat">
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }} />
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
                 {t.cat}
               </span>
               <span className="tactic-card-title">{t.title}</span>
