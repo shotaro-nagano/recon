@@ -13,7 +13,7 @@ import '@fontsource/noto-sans-jp/700.css';
 
 import './styles/tokens.css';
 import './styles/base.css';
-import './styles/coach-dark.css';
+import './styles/coach-ui.css';
 import App from './App';
 
 registerSW({ immediate: true });

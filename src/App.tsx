@@ -107,7 +107,7 @@ export default function App() {
           </NavLink>
         ))}
       </nav>
-      <main className={`app-main${location.pathname.startsWith('/coach') ? ' app-main--dark' : ''}`}>
+      <main className="app-main">
         <div key={location.pathname} className="page-enter">
         <Routes>
           <Route path="/" element={<HomeScreen />} />
